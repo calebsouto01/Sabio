@@ -28,7 +28,7 @@ h1,h2,h3{line-height:1.15}
 @media(min-width:768px){.nav{display:flex}}
 
 /* Hero */
-.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;padding:120px 5% 64px;max-width:var(--wrap);margin:auto;min-height:88vh}
+.hero{overflow-x:clip;display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;padding:120px 5% 64px;max-width:var(--wrap);margin:auto;min-height:88vh}
 .eyebrow{color:var(--gold);text-transform:uppercase;letter-spacing:.2em;font-size:.8rem;margin-bottom:12px;min-height:1.4em}
 h1{font-size:clamp(2rem,5vw,3.4rem);margin-bottom:18px}
 h1 em{font-style:normal;color:var(--gold)}
@@ -165,7 +165,7 @@ footer{text-align:center;padding:28px 5%;color:var(--mut);font-size:.85rem;borde
 
 
 /* Hero: logo 3D suspensa (símbolo de circuito girando em volta da maçã) */
-.logo-stage{position:relative;width:min(100%,540px);aspect-ratio:1/1.08;margin-inline:auto;perspective:1200px;animation:fade-up 1s .2s both}
+.logo-stage{position:relative;width:min(100%,540px,64vh);aspect-ratio:1/1.08;overflow:hidden;margin-inline:auto;perspective:1200px;animation:fade-up 1s .2s both}
 .stage-glow{position:absolute;left:6%;right:6%;top:0;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(212,175,55,.3),rgba(212,175,55,.09) 45%,transparent 70%);filter:blur(8px);animation:glow 5s ease-in-out infinite}
 @keyframes glow{0%,100%{opacity:.7;transform:scale(.96)}50%{opacity:1;transform:scale(1.04)}}
 .stage-floor{position:absolute;left:24%;right:24%;bottom:17%;height:5%;border-radius:50%;background:radial-gradient(ellipse,rgba(0,0,0,.65),transparent 70%);filter:blur(6px);animation:floor 5.5s ease-in-out infinite}
@@ -188,7 +188,23 @@ footer{text-align:center;padding:28px 5%;color:var(--mut);font-size:.85rem;borde
 .stage-brand span{margin-left:.35em;font-size:clamp(1.1rem,3vw,1.7rem);font-weight:300;color:var(--gold)}
 .stage-brand small{display:block;margin-top:6px;font-size:.78rem;letter-spacing:.16em;text-transform:uppercase;color:var(--mut)}
 .logo-stage.is-off *{animation-play-state:paused!important}
-@media(max-width:820px){.logo-stage{width:min(100%,360px)}.lg.thick:nth-child(-n+2){display:none}}
+
+/* Celular: logo 3D pequena ao lado do texto (retrato) e compacta em paisagem */
+@media(max-width:820px){
+  .hero{grid-template-columns:minmax(0,1fr) clamp(118px,38%,175px);column-gap:12px;row-gap:0;padding:92px 5% 36px;min-height:0;align-items:center}
+  .hero-txt{display:contents}
+  .hero .eyebrow{grid-column:1;font-size:.68rem;letter-spacing:.14em;margin-bottom:8px}
+  .hero h1{grid-column:1;font-size:clamp(1.4rem,6.4vw,1.9rem);margin-bottom:10px}
+  .hero .lead{grid-column:1;font-size:.92rem;margin-bottom:16px;max-width:none}
+  .hero .cta{grid-column:1/-1;gap:10px}
+  .hero .cta{align-items:stretch}
+  .hero .cta .btn{flex:1 1 220px;text-align:center;padding:12px 16px;font-size:.92rem}
+  .logo-stage{grid-column:2;grid-row:1/4;align-self:center;width:100%;aspect-ratio:1/1}
+  .stage-brand{display:none}
+  .stage-floor{bottom:6%}
+  .lg.thick:nth-child(-n+3){display:none}
+}
+@media(max-height:520px){.hero{padding-top:84px;padding-bottom:24px;min-height:0}.hero h1{font-size:clamp(1.5rem,7.5vh,2.2rem);margin-bottom:10px}.hero .lead{font-size:.95rem;margin-bottom:16px}}
 
 /* Movimento reduzido: sem efeitos, tudo visível e navegável */
 @media(prefers-reduced-motion:reduce){

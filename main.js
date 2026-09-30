@@ -261,10 +261,11 @@
     start();
   })();
 
-  // Hero: logo 3D — quebra como uma tela trincada, forma um celular e se conserta na logo
+  // Hero: logo 3D — cai e bate no chão, quebra como tela trincada, forma um celular e se conserta.
+  // Roda sozinha (sem clique nem interação).
   (function () {
-    var stage = document.getElementById("logoStage"), tilt = document.getElementById("tilt");
-    if (!stage || !tilt) return;
+    var stage = document.getElementById("logoStage");
+    if (!stage) return;
     var dataEl = document.getElementById("logoData");
     if (reduce || !dataEl) {
       Array.prototype.slice.call(document.querySelectorAll("animateTransform")).forEach(function (a) { a.remove(); });
@@ -275,12 +276,12 @@
     var els = Array.prototype.slice.call(stage.querySelectorAll(".pc"));
     var $ = function (id) { return document.getElementById(id); };
     var applePose = $("applePose"), phone = $("phone"), scan = $("scan"), shake = $("shake");
-    var flash = $("flash"), cracks = $("cracks"), status = $("stageStatus");
-    var sparks = Array.prototype.slice.call($("sparks").children);
+    var shock1 = $("shock1"), shock2 = $("shock2"), status = $("stageStatus");
+    var sparks = Array.prototype.slice.call($("sparks").children), dust = Array.prototype.slice.call($("dust").children);
 
     // ---------- linha do tempo (segundos, ciclo de 15 s) ----------
     var CY = 15;
-    var T = { tre: 5.05, imp: 5.4, frz: 5.52, bur: 6.5, dr: 7.7, asm: 9.4, hold: 10.9, rep: 11.15, repEnd: 12.45, res: 12.9 };
+    var T = { wind: 4.3, drop: 5.0, imp: 5.36, frz: 5.46, bur: 6.45, dr: 7.6, asm: 9.5, hold: 10.9, rep: 11.15, repEnd: 12.45, res: 12.9 };
 
     function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
     function mix(a, b, k) { return a + (b - a) * k; }
@@ -292,9 +293,9 @@
       return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
     }
     function mixPose(a, b, k) {
-      return { x: mix(a.x, b.x, k), y: mix(a.y, b.y, k), z: mix(a.z, b.z, k), rx: mix(a.rx, b.rx, k), ry: mix(a.ry, b.ry, k), rz: mix(a.rz, b.rz, k), s: mix(a.s, b.s, k) };
+      return { x: mix(a.x, b.x, k), y: mix(a.y, b.y, k), z: mix(a.z, b.z, k), rx: mix(a.rx, b.rx, k), ry: mix(a.ry, b.ry, k), rz: mix(a.rz, b.rz, k), s: mix(a.s, b.s, k), th: mix(a.th, b.th, k) };
     }
-    var ID = { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, s: 1 };
+    var ID = { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, s: 1, th: 1 };
 
     // ---------- giro das trilhas (estado "logo") ----------
     function ramp(dt) { var r = 1.2; return dt < r ? dt * dt / (2 * r) : dt - r / 2; }
@@ -305,11 +306,11 @@
     }
     function ringPose(i, tc) {
       var p = P[i], th = ringAngle(p.g, tc), r = th * Math.PI / 180, dx = p.cx - OX, dy = p.cy - OY;
-      return { x: dx * Math.cos(r) - dy * Math.sin(r) - dx, y: dx * Math.sin(r) + dy * Math.cos(r) - dy, z: 0, rx: 0, ry: 0, rz: th, s: 1 };
+      return { x: dx * Math.cos(r) - dy * Math.sin(r) - dx, y: dx * Math.sin(r) + dy * Math.cos(r) - dy, z: 0, rx: 0, ry: 0, rz: th, s: 1, th: 1 };
     }
 
     // ---------- estados por ciclo: dispersão e celular ----------
-    var SCR = { w: 124, h: 260 }, IMPACT = { x: OX + 14, y: OY + 40 };
+    var SCR = { w: 124, h: 260 }, IMPACT = { x: OX + 12, y: OY + 36 };
     var S = [], PH = [], cycleId = -1;
     function buildCycle(n) {
       cycleId = n;
@@ -317,7 +318,7 @@
       S = P.map(function (p) {
         var a = r() * Math.PI * 2, rad = 62 + r() * 58;
         return { x: Math.cos(a) * rad + (OX - p.cx), y: Math.sin(a) * rad + (OY - p.cy), z: -60 + r() * 150,
-                 rx: (r() - 0.5) * 150, ry: (r() - 0.5) * 150, rz: (r() - 0.5) * 360, s: 0.75 + r() * 0.45, ph: r() * 6.28, amp: 5 + r() * 8 };
+                 rx: (r() - 0.5) * 150, ry: (r() - 0.5) * 150, rz: (r() - 0.5) * 360, s: 0.75 + r() * 0.45, th: 1, ph: r() * 6.28, amp: 5 + r() * 8 };
       });
       // rachaduras a partir do ponto de impacto: peças mais longas pegam as direções mais longas
       var dirs = [], k;
@@ -331,47 +332,78 @@
       dirs.sort(function (a, b) { return b.t - a.t; });
       PH = new Array(N);
       byLen.forEach(function (i, rank) {
-        var p = P[i], d = dirs[rank], s = clamp(Math.min(d.t * 0.9, p.len) / p.len, 0.28, 1);
-        var gap = 5 + (rank % 3) * 5, half = s * p.len / 2;
+        var p = P[i], d = dirs[rank], gap = 7 + (rank % 3) * 5, cd = Math.abs(Math.cos(d.a)), sd = Math.abs(Math.sin(d.a));
+        var s = clamp(Math.min((d.t - gap) * 0.9, p.len) / p.len, 0.3, 1);
+        // a peça inteira (comprimento + dobras já afinadas) precisa caber dentro da tela
+        s = Math.min(s, (SCR.w / 2 - 4) / (cd * p.len / 2 + sd * p.rad * 0.35 + 0.001), (SCR.h / 2 - 4) / (sd * p.len / 2 + cd * p.rad * 0.35 + 0.001));
+        var half = s * p.len / 2, w2 = s * p.rad * 0.35;
+        var hx = cd * half + sd * w2, hy = sd * half + cd * w2;
         var mx = IMPACT.x + Math.cos(d.a) * (gap + half), my = IMPACT.y + Math.sin(d.a) * (gap + half);
+        mx = clamp(mx, OX - SCR.w / 2 + hx + 2, OX + SCR.w / 2 - hx - 2); my = clamp(my, OY - SCR.h / 2 + hy + 2, OY + SCR.h / 2 - hy - 2);
         var rz = d.a * 180 / Math.PI - p.ang;
         rz += 360 * Math.round((S[i].rz - rz) / 360);
-        PH[i] = { x: mx - p.cx, y: my - p.cy, z: 8, rx: 0, ry: 0, rz: rz, s: s };
+        PH[i] = { x: mx - p.cx, y: my - p.cy, z: 6, rx: 0, ry: 0, rz: rz, s: s, th: 0.42 };   // linhas finas e suaves
       });
     }
     function scatterAt(i, tc) {
       var b = S[i];
       return { x: b.x + Math.sin(tc * 1.3 + b.ph) * b.amp, y: b.y + Math.cos(tc * 1.1 + b.ph * 1.7) * b.amp, z: b.z + Math.sin(tc * 0.9 + b.ph) * 14,
-               rx: b.rx + Math.sin(tc * 0.7 + b.ph) * 16, ry: b.ry + Math.cos(tc * 0.6 + b.ph) * 16, rz: b.rz + Math.sin(tc * 0.5 + b.ph * 2) * 20, s: b.s };
+               rx: b.rx + Math.sin(tc * 0.7 + b.ph) * 16, ry: b.ry + Math.cos(tc * 0.6 + b.ph) * 16, rz: b.rz + Math.sin(tc * 0.5 + b.ph * 2) * 20, s: b.s, th: 1 };
     }
     function pieceAt(i, tc) {
       var d = i * 0.03;
-      if (tc < T.tre) return ringPose(i, tc);
-      if (tc >= T.repEnd + 0.4) return tc < T.res ? ID : ringPose(i, tc);
-      if (tc < T.imp) {                       // anticipação: tremor crescente
-        var a = ((tc - T.tre) / (T.imp - T.tre)) * 1.8, q = ringPose(i, tc);
+      if (tc < T.wind) return ringPose(i, tc);
+      if (tc < T.imp) {                        // sobe, hesita e cai: a logo inteira se move (ver wrapper); aqui só um leve tremor
+        var q = ringPose(i, tc), a = k01(tc, T.wind, T.drop) * 1.4;
         q.x += Math.sin(tc * 97 + i * 7) * a; q.y += Math.cos(tc * 83 + i * 5) * a; return q;
       }
-      if (tc < T.frz) {                       // pausa do impacto
-        var f = ringPose(i, T.imp);
-        f.x += Math.sin(tc * 140 + i) * 1.2; f.y += Math.cos(tc * 120 + i) * 1.2; return f;
-      }
-      if (tc < T.dr - 1.2) {                  // estilhaça
+      if (tc < T.frz) return ringPose(i, T.imp);   // instante do impacto
+      if (tc < T.dr - 1.15) {                  // estilhaça a partir do chão
         return mixPose(ringPose(i, T.imp), scatterAt(i, tc), outCubic(k01(tc, T.frz + d * 0.6, T.bur)));
       }
       if (tc < T.dr) return scatterAt(i, tc);
-      if (tc < T.asm + 0.05) {                // reúne no formato de celular
+      if (tc < T.asm + 0.05) {                 // reúne no formato de celular (suave)
         return mixPose(scatterAt(i, tc), PH[i], ease3(k01(tc, T.dr + d, T.asm)));
       }
-      if (tc < T.hold) {                      // celular trincado
-        var h = PH[i], br = Math.sin(tc * 3 + i) * 0.5; return { x: h.x, y: h.y, z: h.z + br, rx: 0, ry: 0, rz: h.rz, s: h.s };
+      if (tc < T.hold) {                       // celular trincado
+        var h = PH[i], br = Math.sin(tc * 2.4 + i) * 0.4; return { x: h.x, y: h.y, z: h.z + br, rx: 0, ry: 0, rz: h.rz, s: h.s, th: h.th };
       }
-      var st = PH[i], start = { x: st.x, y: st.y, z: 40, rx: 0, ry: 0, rz: st.rz - 360 * Math.round(st.rz / 360), s: st.s };
-      if (tc < T.rep + 0.25 + d) {            // solta do vidro
+      var st = PH[i], start = { x: st.x, y: st.y, z: 40, rx: 0, ry: 0, rz: st.rz - 360 * Math.round(st.rz / 360), s: st.s, th: st.th };
+      if (tc < T.rep + 0.25 + d) {             // solta do vidro
         var lift = ease3(k01(tc, T.hold, T.rep + 0.25));
-        return { x: st.x, y: st.y, z: mix(st.z, 40, lift), rx: 0, ry: 0, rz: start.rz, s: st.s };
+        return { x: st.x, y: st.y, z: mix(st.z, 40, lift), rx: 0, ry: 0, rz: start.rz, s: st.s, th: st.th };
       }
-      return mixPose(start, ID, outBack(k01(tc, T.rep + 0.25 + d, T.repEnd)));   // encaixa de volta na logo
+      if (tc < T.repEnd + 0.4) return mixPose(start, ID, outBack(k01(tc, T.rep + 0.25 + d, T.repEnd)));   // encaixa de volta na logo
+      return tc < T.res ? ID : ringPose(i, tc);
+    }
+
+    // ---------- queda e impacto no chão (a logo inteira) ----------
+    var RH = 44;   // altura da subida, px (ajustada ao tamanho da cena)
+    function wrapperAt(tc) {
+      var w = { y: 0, rot: 0, sx: 1, sy: 1, jx: 0, jy: 0 };
+      if (tc < T.wind) return w;
+      if (tc < T.drop) {                       // sobe devagar (como se fosse lançada) e hesita no topo
+        w.y = -RH * outCubic(k01(tc, T.wind, T.drop - 0.12));
+        w.jx = Math.sin(tc * 60) * 0.8; return w;
+      }
+      if (tc < T.imp) {                        // cai acelerando, girando um pouco
+        var k = k01(tc, T.drop, T.imp);
+        w.y = -RH * (1 - k * k); w.rot = -5 * k; w.sy = 1 + 0.05 * k; w.sx = 1 - 0.03 * k; return w;
+      }
+      var t = tc - T.imp;
+      if (t < 0.1) { w.y = 3; w.sy = 0.84; w.sx = 1.1; w.rot = -1; return w; }        // achata no impacto
+      t -= 0.1;
+      if (t < 1.1) {                           // quica e se recompõe (amortecido)
+        var dcy = Math.exp(-t * 6.5);
+        w.y = -RH * 0.45 * Math.abs(Math.sin(t * 9.5)) * dcy;
+        var sq = Math.cos(t * 26) * Math.exp(-t * 9);
+        w.sy = 1 - 0.16 * sq; w.sx = 1 + 0.1 * sq; w.rot = -1 * Math.exp(-t * 8);
+        w.jx = Math.sin(t * 110) * 5 * Math.exp(-t * 10); w.jy = Math.cos(t * 95) * 4 * Math.exp(-t * 10);
+      }
+      // conserto: pequeno "estalo" ao encaixar
+      var t2 = tc - (T.repEnd - 0.1);
+      if (t2 >= 0 && t2 < 0.5) { var e = Math.exp(-t2 * 9) * Math.sin(t2 * 30); w.sy *= 1 - 0.05 * e; w.sx *= 1 + 0.03 * e; }
+      return w;
     }
 
     // ---------- estados dos demais elementos ----------
@@ -382,43 +414,59 @@
       status.textContent = txt; status.classList.toggle("on", !!txt); status.classList.toggle("bad", !!bad);
     }
     function render(tc) {
-      var i, tt, v;
+      var i, v, sw = stage.clientWidth || 464, sk = sw / 464;
+      RH = Math.max(18, (stage.clientHeight || 500) * 0.13);
+      // peças
       for (i = 0; i < N; i++) {
-        var p = pieceAt(i, tc);
-        els[i].style.transform = "translate3d(" + (p.x * U).toFixed(3) + "%," + (p.y * U).toFixed(3) + "%," + p.z.toFixed(2) + "px) rotateX(" + p.rx.toFixed(2) + "deg) rotateY(" + p.ry.toFixed(2) + "deg) rotateZ(" + p.rz.toFixed(2) + "deg) scale(" + p.s.toFixed(3) + ")";
+        var p = pieceAt(i, tc), ang = P[i].ang.toFixed(1), nang = (-P[i].ang).toFixed(1);
+        els[i].style.transform = "translate3d(" + (p.x * U).toFixed(3) + "%," + (p.y * U).toFixed(3) + "%," + p.z.toFixed(2) + "px) rotateX(" + p.rx.toFixed(2) + "deg) rotateY(" + p.ry.toFixed(2) + "deg) rotateZ(" + p.rz.toFixed(2) + "deg) scale(" + p.s.toFixed(3) + ") rotateZ(" + ang + "deg) scale(1," + p.th.toFixed(3) + ") rotateZ(" + nang + "deg)";
       }
+      // logo inteira: queda, achatamento, quique e tremor
+      var w = wrapperAt(tc);
+      shake.style.transform = "translate3d(" + w.jx.toFixed(2) + "px," + (w.y + w.jy).toFixed(2) + "px,0) rotate(" + w.rot.toFixed(2) + "deg) scale(" + (0.9 * w.sx).toFixed(4) + "," + (0.9 * w.sy).toFixed(4) + ")";
+      // sombra no chão reage à altura; onda de choque e poeira no impacto
+      var raise = clamp(-w.y / RH, 0, 1), tt = tc - T.imp;
+      var fsx = mix(1, 0.6, raise), fop = mix(0.75, 0.38, raise), flare = tt >= 0 && tt < 0.9 ? Math.exp(-tt * 5) : 0;
+      fsx *= 1 + 0.6 * flare; fop = Math.min(1, fop + 0.25 * flare);
+      stage.style.setProperty("--fsx", fsx.toFixed(3)); stage.style.setProperty("--fsy", (mix(1, 0.7, raise) * (1 + 0.3 * flare)).toFixed(3)); stage.style.setProperty("--fop", fop.toFixed(3));
+      var kk1 = k01(tt, 0, 0.95), kk2 = k01(tt, 0.13, 1.1);
+      shock1.style.setProperty("--ks", (0.2 + 1.25 * outCubic(kk1)).toFixed(3)); shock1.style.setProperty("--ko", (tt < 0 ? 0 : (1 - kk1) * 0.85).toFixed(3));
+      shock2.style.setProperty("--ks", (0.2 + 1.25 * outCubic(kk2)).toFixed(3)); shock2.style.setProperty("--ko", (tt < 0.13 ? 0 : (1 - kk2) * 0.5).toFixed(3));
+      dust.forEach(function (el, n) {
+        var life = tt - (n % 3) * 0.03;
+        if (life < 0 || life > 1.0) { if (el.style.opacity !== "0") el.style.opacity = 0; return; }
+        var kd = outCubic(life / 1.0), side = n % 2 ? 1 : -1, dist = (20 + (n >> 1) * 11) * sk;
+        el.style.opacity = (0.4 * (1 - life / 1.0)).toFixed(3);
+        el.style.transform = "translate(" + (side * dist * kd * 3).toFixed(1) + "px," + (-(6 + (n % 4) * 5) * sk * kd).toFixed(1) + "px) scale(" + (0.7 + kd * 1.1).toFixed(2) + ")";
+      });
       // maçã: núcleo que vira "fantasma" atrás do vidro e acende no conserto
       var ao = 1, as = 1, jx = 0, jy = 0;
-      if (tc >= T.tre && tc < T.frz) { var am = tc < T.imp ? 1.2 : 3; jx = Math.sin(tc * 110) * am; jy = Math.cos(tc * 95) * am; }
-      if (tc >= T.frz && tc < T.rep) { var kk = ease3(k01(tc, T.frz + 0.1, 6.6)); ao = mix(1, 0.4, kk); as = mix(1, 0.9, kk); if (tc > T.asm) ao += Math.sin(tc * 4) * 0.1; }
+      if (tc >= T.wind && tc < T.frz) { var am = tc < T.drop ? 0.6 : 0.4; jx = Math.sin(tc * 110) * am; jy = Math.cos(tc * 95) * am; }
+      if (tc >= T.frz && tc < T.rep) { var kq = ease3(k01(tc, T.frz + 0.1, 6.6)); ao = mix(1, 0.4, kq); as = mix(1, 0.9, kq); if (tc > T.asm) ao += Math.sin(tc * 3.4) * 0.08; }
       if (tc >= T.rep && tc < T.repEnd + 0.3) { var kr = k01(tc, T.rep, T.repEnd + 0.1); ao = mix(0.4, 1, ease3(kr)); as = mix(0.9, 1, outBack(kr)); }
       applePose.style.transform = "translate(" + jx.toFixed(2) + "px," + jy.toFixed(2) + "px) scale(" + as.toFixed(3) + ")";
       applePose.style.opacity = ao.toFixed(3);
+      // volume das peças: achata (fica só o traço fino) enquanto vira celular
+      var tk = 1;
+      if (tc >= T.dr && tc < T.hold) tk = 1 - 0.9 * ease3(k01(tc, T.dr, T.asm));
+      else if (tc >= T.hold && tc < T.rep + 0.8) tk = 0.1 + 0.9 * ease3(k01(tc, T.hold + 0.3, T.rep + 0.8));
+      stage.style.setProperty("--tk", tk.toFixed(3));
       // celular
       var po = 0, ps = 0.86;
-      if (tc >= 7.35 && tc < T.rep) { v = ease3(k01(tc, 7.35, 8.7)); po = v; ps = mix(0.86, 1, v); }
+      if (tc >= 7.35 && tc < T.rep) { v = ease3(k01(tc, 7.35, 8.8)); po = v; ps = mix(0.86, 1, v); }
       if (tc >= T.rep && tc < T.repEnd + 0.3) { v = ease3(k01(tc, T.rep + 0.05, T.repEnd)); po = 1 - v; ps = mix(1, 0.55, v); }
       phone.style.setProperty("--po", po.toFixed(3)); phone.style.setProperty("--ps", ps.toFixed(3));
       // feixe de conserto
       var so = 0, sy = 0;
-      if (tc >= T.hold && tc < T.hold + 0.7) { v = k01(tc, T.hold, T.hold + 0.7); so = Math.sin(v * Math.PI); sy = v * 100; }
-      scan.style.setProperty("--so", so.toFixed(3)); scan.style.setProperty("--sy", (sy * (phone.offsetHeight || 1) / 100).toFixed(1) + "px");
-      // impacto: flash, rachaduras e tremor
-      tt = tc - T.imp; var fo = 0, co = 0, cd = 1, sx = 0, sh = 0;
-      if (tt >= 0 && tt < 0.6) { fo = tt < 0.06 ? tt / 0.06 : Math.exp(-(tt - 0.06) * 9); }
-      if (tt >= 0 && tt < 1.05) { cd = 1 - clamp(tt / 0.2, 0, 1); co = tt < 0.5 ? 1 : 1 - (tt - 0.5) / 0.55; }
-      if (tt >= 0 && tt < 0.5) { var am2 = 9 * (1 - tt / 0.5); sx = Math.sin(tt * 130) * am2; sh = Math.cos(tt * 110) * am2; }
-      var t2 = tc - (T.repEnd - 0.2);
-      if (t2 >= 0 && t2 < 0.5) fo = Math.max(fo, 0.45 * Math.exp(-t2 * 7));
-      flash.style.setProperty("--fo", fo.toFixed(3)); cracks.style.setProperty("--co", co.toFixed(3)); cracks.style.setProperty("--cd", cd.toFixed(3));
-      shake.style.transform = "translate3d(" + sx.toFixed(2) + "px," + sh.toFixed(2) + "px,0)";
+      if (tc >= T.hold && tc < T.hold + 0.8) { v = k01(tc, T.hold, T.hold + 0.8); so = Math.sin(v * Math.PI); sy = v; }
+      scan.style.setProperty("--so", so.toFixed(3)); scan.style.setProperty("--sy", (sy * (phone.offsetHeight || 1)).toFixed(1) + "px");
       // faíscas no conserto
       var sp = tc - (T.repEnd - 0.25);
       sparks.forEach(function (el, n) {
         if (sp < 0 || sp > 1.0) { if (el.style.opacity !== "0") el.style.opacity = 0; return; }
         var a = n * 2.399963 + 0.5, dist = 12 + (n % 4) * 9, kx = outCubic(clamp(sp / 0.9, 0, 1));
         el.style.opacity = (1 - clamp(sp / 1.0, 0, 1)).toFixed(3);
-        el.style.transform = "translate(" + (Math.cos(a) * dist * kx * 4).toFixed(1) + "px," + (Math.sin(a) * dist * kx * 4).toFixed(1) + "px) scale(" + mix(1.3, 0.3, kx).toFixed(2) + ")";
+        el.style.transform = "translate(" + (Math.cos(a) * dist * kx * 4 * sk).toFixed(1) + "px," + (Math.sin(a) * dist * kx * 4 * sk).toFixed(1) + "px) scale(" + mix(1.3, 0.3, kx).toFixed(2) + ")";
       });
       // legenda
       if (tc >= 6.2 && tc < T.hold + 0.6) setStatus("Tela quebrada", true);
@@ -426,10 +474,10 @@
       else setStatus("", false);
     }
 
-    // ---------- laço de animação ----------
-    var t0 = performance.now(), off = 0, raf = 0, running = false;
+    // ---------- laço de animação (automático) ----------
+    var t0 = performance.now(), raf = 0, running = false;
     function frame(now) {
-      var el = (now - t0) / 1000 + off, n = Math.floor(el / CY);
+      var el = (now - t0) / 1000, n = Math.floor(el / CY);
       if (n !== cycleId) buildCycle(n);
       render(el - n * CY);
       raf = requestAnimationFrame(frame);
@@ -437,25 +485,8 @@
     function start() { if (running) return; running = true; raf = requestAnimationFrame(frame); }
     function stop() { running = false; cancelAnimationFrame(raf); }
     buildCycle(0);
-    // toque/clique: dispara a quebra
-    stage.addEventListener("click", function () {
-      var now = performance.now(), el = (now - t0) / 1000 + off, tc = el - Math.floor(el / CY) * CY;
-      if (tc < T.tre - 0.5 || tc >= T.res) off += (T.tre - 0.35) - tc + (tc >= T.res ? CY : 0);
-    });
-    window.__sabioSeek = function (tc) { stop(); buildCycle(1); render(tc); };
-    // inclina com o mouse; pausa fora da tela
-    var hero = stage.closest(".hero") || stage;
-    if (window.matchMedia && window.matchMedia("(hover: hover)").matches) {
-      hero.addEventListener("pointermove", function (e) {
-        var r = hero.getBoundingClientRect();
-        var x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
-        tilt.style.setProperty("--ry", (x * 34).toFixed(1) + "deg");
-        tilt.style.setProperty("--rx", (-y * 24).toFixed(1) + "deg");
-      });
-      hero.addEventListener("pointerleave", function () {
-        tilt.style.setProperty("--ry", "0deg"); tilt.style.setProperty("--rx", "0deg");
-      });
-    }
+    window.__sabioSeek = function (tc, cyc) { stop(); buildCycle(cyc || 1); render(tc); };
+    // pausa fora da tela ou com a aba em segundo plano
     var visible = true;
     if (hasIO) {
       new IntersectionObserver(function (entries) {

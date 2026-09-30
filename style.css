@@ -165,13 +165,12 @@ footer{text-align:center;padding:28px 5%;color:var(--mut);font-size:.85rem;borde
 
 
 /* Hero: logo 3D suspensa — quebra como tela trincada, forma um celular e se conserta */
-.logo-stage{position:relative;width:min(100%,540px,64vh);aspect-ratio:1/1.08;overflow:hidden;margin-inline:auto;perspective:1200px;animation:fade-up 1s .2s both;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.logo-stage{position:relative;width:min(100%,540px,64vh);aspect-ratio:1/1.08;overflow-x:clip;overflow-y:visible;margin-inline:auto;perspective:1200px;animation:fade-up 1s .2s both}
 .stage-glow{position:absolute;left:6%;right:6%;top:0;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(212,175,55,.3),rgba(212,175,55,.09) 45%,transparent 70%);filter:blur(8px);animation:glow 5s ease-in-out infinite}
 @keyframes glow{0%,100%{opacity:.7;transform:scale(.96)}50%{opacity:1;transform:scale(1.04)}}
-.stage-floor{position:absolute;left:24%;right:24%;bottom:17%;height:5%;border-radius:50%;background:radial-gradient(ellipse,rgba(0,0,0,.65),transparent 70%);filter:blur(6px);animation:floor 5.5s ease-in-out infinite}
-@keyframes floor{0%,100%{transform:scale(1);opacity:.75}50%{transform:scale(.8);opacity:.45}}
+.stage-floor{position:absolute;left:24%;right:24%;bottom:17%;height:5%;border-radius:50%;background:radial-gradient(ellipse,rgba(0,0,0,.65),transparent 70%);filter:blur(6px);transform:scale(var(--fsx,1),var(--fsy,1));opacity:var(--fop,.75)}
 .tilt{position:absolute;left:5%;right:5%;top:0;aspect-ratio:1;transform-style:preserve-3d;transform:rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .3s ease-out}
-.shake{position:absolute;inset:0;transform-style:preserve-3d}
+.shake{position:absolute;inset:0;transform-style:preserve-3d;transform-origin:50% 96%;transform:scale(.9)}
 .sway{position:absolute;inset:0;transform-style:preserve-3d;animation:sway 9s ease-in-out infinite}
 @keyframes sway{0%,100%{transform:translateY(-10px) rotateY(-16deg) rotateX(7deg)}50%{transform:translateY(10px) rotateY(16deg) rotateX(-5deg)}}
 .zl,.zs,.za,.pc,.apple,.apple-pose{position:absolute;inset:0;transform-style:preserve-3d}
@@ -181,9 +180,10 @@ footer{text-align:center;padding:28px 5%;color:var(--mut);font-size:.85rem;borde
 .pc{will-change:transform}
 .apple{animation:bob 4.5s ease-in-out infinite}
 @keyframes bob{0%,100%{transform:translateZ(0)}50%{transform:translateZ(16px)}}
+.lg.thick{opacity:var(--tk,1)}
 .lg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;backface-visibility:visible}
 /* celular (aparece só durante a montagem) */
-.phone{position:absolute;left:50%;top:50%;width:41.8%;aspect-ratio:140/276;transform:translate(-50%,-50%) translateZ(-14px) scale(var(--ps,.86));opacity:var(--po,0);border-radius:15% / 7.5%;background:linear-gradient(160deg,#1d1d24,#0a0a0d 62%);border:2px solid rgba(212,175,55,.9);box-shadow:0 0 42px rgba(212,175,55,.38),inset 0 0 34px rgba(0,0,0,.85),inset 0 0 0 6px #0c0c0f;overflow:hidden;pointer-events:none}
+.phone{position:absolute;left:50%;top:50%;width:41.8%;aspect-ratio:140/276;transform:translate(-50%,-50%) translateZ(-14px) scale(var(--ps,.86));opacity:var(--po,0);border-radius:15% / 7.5%;background:linear-gradient(160deg,#1d1d24,#0a0a0d 62%);border:1.5px solid rgba(212,175,55,.72);box-shadow:0 0 34px rgba(212,175,55,.24),inset 0 0 34px rgba(0,0,0,.85),inset 0 0 0 6px #0c0c0f;overflow:hidden;pointer-events:none}
 .phone::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,rgba(255,255,255,.09),transparent 38%,transparent 62%,rgba(255,255,255,.05));pointer-events:none}
 .notch{position:absolute;top:2.6%;left:50%;width:30%;height:2.6%;transform:translateX(-50%);border-radius:99px;background:#000;box-shadow:0 0 0 1px rgba(255,255,255,.08)}
 .pb{position:absolute;width:2px;background:rgba(212,175,55,.8);border-radius:2px}
@@ -191,9 +191,9 @@ footer{text-align:center;padding:28px 5%;color:var(--mut);font-size:.85rem;borde
 .scan{position:absolute;left:0;right:0;top:0;height:3px;opacity:var(--so,0);transform:translateY(var(--sy,0px));background:linear-gradient(90deg,transparent,#fff1b8 30%,#fff 50%,#fff1b8 70%,transparent);box-shadow:0 0 14px 3px rgba(255,241,184,.85);z-index:2}
 /* efeitos 2D por cima (rachaduras, flash, faíscas) */
 .fx{position:absolute;left:5%;right:5%;top:0;aspect-ratio:1;pointer-events:none}
-.cracks{position:absolute;inset:0;width:100%;height:100%;opacity:var(--co,0);filter:drop-shadow(0 0 3px rgba(255,241,184,.9))}
-.cracks path{stroke-dasharray:1;stroke-dashoffset:var(--cd,1)}
-.flash{position:absolute;inset:-14%;background:radial-gradient(circle,rgba(255,247,215,.98),rgba(212,175,55,.4) 38%,transparent 66%);opacity:var(--fo,0);mix-blend-mode:screen}
+/* impacto no chão: onda de choque e poeira */
+.shock{position:absolute;left:50%;top:96%;width:62%;aspect-ratio:4/1;margin-left:-31%;margin-top:-6%;border-radius:50%;border:2px solid rgba(255,241,184,.85);box-shadow:0 0 14px rgba(212,175,55,.5);opacity:var(--ko,0);transform:scale(var(--ks,.2))}
+.dust i{position:absolute;left:50%;top:95%;width:5%;aspect-ratio:1;margin:-2.5%;border-radius:50%;background:radial-gradient(circle,rgba(240,220,160,.8),rgba(240,220,160,0) 70%);opacity:0}
 .sparks i{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:#fff1b8;box-shadow:0 0 8px 2px rgba(212,175,55,.9);opacity:0}
 .stage-status{position:absolute;left:0;right:0;bottom:15.5%;text-align:center;font-size:.72rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;opacity:0;transition:opacity .3s ease;color:var(--gold)}
 .stage-status.on{opacity:1}

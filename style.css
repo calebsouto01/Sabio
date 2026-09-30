@@ -70,7 +70,7 @@ h2{font-size:clamp(1.6rem,3.5vw,2.3rem);color:var(--gold);margin-bottom:8px}
 .tags span{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:4px 12px;font-size:.78rem;color:rgba(255,255,255,.78)}
 
 /* Painéis que expandem */
-.plans{display:flex;gap:10px;height:260px}
+.plans{display:flex;gap:10px;height:320px}
 .panel{position:relative;flex:1;min-width:0;border-radius:var(--r);border:1px solid #2a2a32;background:var(--card);cursor:pointer;overflow:hidden;display:flex;align-items:center;justify-content:center;outline:none;transition:flex .55s cubic-bezier(.16,1,.3,1),background .4s,border-color .4s,box-shadow .25s}
 .panel:not(.is-open):hover{box-shadow:0 10px 22px rgba(0,0,0,.4);border-color:#3a3a44}
 .panel:focus-visible{border-color:var(--gold)}
@@ -83,22 +83,28 @@ h2{font-size:clamp(1.6rem,3.5vw,2.3rem);color:var(--gold);margin-bottom:8px}
 @keyframes hint{0%,100%{opacity:0;box-shadow:inset 0 0 0 0 rgba(212,175,55,0)}50%{opacity:1;box-shadow:inset 0 0 0 3px rgba(242,214,117,.85)}}
 .panel-label{position:absolute;font-size:.9rem;font-weight:700;color:var(--mut);white-space:nowrap;writing-mode:vertical-rl;transform:rotate(180deg);transition:opacity .3s}
 .panel.is-open .panel-label{opacity:0;pointer-events:none}
-.panel-details{opacity:0;transform:translateY(6px);transition:opacity .35s ease .15s,transform .35s ease .15s;text-align:center;padding:0 16px;white-space:nowrap}
+.panel-details{opacity:0;transform:translateY(6px);transition:opacity .35s ease .15s,transform .35s ease .15s;display:flex;align-items:center;justify-content:center;gap:clamp(12px,2.4vw,28px);padding:0 clamp(12px,2vw,26px);width:100%;text-align:left}
+.panel-txt{flex:0 1 240px;min-width:0}
+.panel-shots{display:flex;gap:10px;flex:0 1 auto;min-width:0}
+.panel-shots img{width:clamp(72px,9.5vw,128px);aspect-ratio:1;object-fit:contain;background:#fff;border-radius:14px;padding:6px;box-shadow:0 8px 20px rgba(0,0,0,.35);transition:transform .25s ease}
+.panel-shots img:hover{transform:translateY(-4px) scale(1.04)}
+.panel-thumb{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:clamp(30px,3.6vw,44px);aspect-ratio:1;object-fit:contain;background:#fff;border-radius:10px;padding:3px;transition:opacity .3s}
+.panel.is-open .panel-thumb{opacity:0}
+.brands-label{display:block;margin-top:12px;color:var(--gold);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase}
+.panel-details .tags{margin-top:6px}
 .panel.is-open .panel-details{opacity:1;transform:none}
-.panel-bg{position:absolute;inset:0;z-index:0}
-.panel-bg img{width:100%;height:100%;object-fit:cover;opacity:.3;transition:opacity .5s ease,transform .9s ease}
-.panel-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(13,13,15,.5),rgba(13,13,15,.9))}
-.panel:not(.is-open):hover .panel-bg img{opacity:.45}
-.panel.is-open .panel-bg img{opacity:.62;transform:scale(1.05)}
-.panel-label{z-index:1}
-.panel-details{position:relative;z-index:1}
-.panel-details h3,.panel-details p{text-shadow:0 2px 10px rgba(0,0,0,.6)}
-.panel-details p{color:rgba(255,255,255,.85)}
-.panel-details .tags{justify-content:center;margin-top:12px}
 .panel-num{display:block;color:var(--gold);font-weight:800;font-size:.9rem;letter-spacing:.2em;margin-bottom:6px}
 .panel-details h3{font-size:1.5rem;margin-bottom:10px}
 .panel-details p{color:var(--mut)}
-@media(max-width:700px){.plans{height:340px}.panel-details{white-space:normal;padding:0 8px}.panel-details h3{font-size:1.15rem}}
+@media(max-width:700px){
+  .plans{height:470px}
+  .panel-details{flex-direction:column;justify-content:center;gap:12px;padding:0 6px;text-align:center}
+  .panel-txt{flex:none}
+  .panel-details h3{font-size:1.1rem}
+  .panel-shots img{width:104px}
+  .panel-shots img:nth-child(n+2){display:none}
+  .panel-details .tags{justify-content:center}
+}
 
 /* Loja: carrossel automático com botões laterais */
 .carousel{position:relative}

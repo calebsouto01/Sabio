@@ -1,16 +1,13 @@
-Fotos da seção "Acessórios" (uma para cada categoria).
+Fotos de exemplo da seção "Acessórios" (imagens ilustrativas de banco de imagens).
 
-Coloque aqui, com EXATAMENTE estes nomes (.jpg):
+Arquivos em uso (.jpg):
+  audio-jbl.jpg, audio-inova.jpg, audio-philips.jpg  -> categoria Áudio (3 fotos)
+  capas.jpg                                          -> Capas e proteção
+  energia.jpg                                        -> Energia
+  games.jpg                                          -> Games e mais
 
-  audio.jpg     -> Áudio: fones, headphones, caixas de som
-                   (buscar: "JBL headphone", "caixa de som bluetooth", "fone de ouvido")
-  capas.jpg     -> Capas e proteção: capinhas e películas de celular
-  energia.jpg   -> Energia: carregadores, cabos, fontes
-  games.jpg     -> Games e mais: controle de videogame, teclado, garrafa térmica
+Para trocar uma foto, envie outra com o MESMO nome (fundo branco, quadrada, ~800x800 px).
+Se uma foto faltar, ela simplesmente não aparece.
 
-Dicas:
-- Imagem HORIZONTAL, proporção 2:1 (ex.: 1200x600 px), até ~300 KB.
-- O assunto principal deve ficar no CENTRO da foto (as bordas são cortadas).
-- A foto aparece escurecida por trás do texto, então prefira imagens nítidas.
-- Se uma foto faltar, a categoria aparece sem imagem, sem erro.
-- Guarde o crédito/licença se o banco de imagens exigir.
+As marcas exibidas no site são EXEMPLOS das mais comuns. Confirmar as marcas
+exatas do cliente no fechamento e ajustar em index.html (procure "Marcas comuns").

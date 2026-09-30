@@ -41,7 +41,7 @@
 
   // Revelar ao rolar
   (function () {
-    var els = Array.prototype.slice.call(document.querySelectorAll(".reveal"));
+    var els = Array.prototype.slice.call(document.querySelectorAll(".reveal, .perk"));
     if (!els.length) return;
     if (!hasIO || reduce) { els.forEach(function (e) { e.classList.add("is-visible"); }); return; }
     var io = new IntersectionObserver(function (entries) {

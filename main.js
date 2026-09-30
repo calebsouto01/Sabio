@@ -148,7 +148,8 @@
     var dotsEl = document.getElementById("cDots");
     var originals = Array.prototype.slice.call(track.children);
     var n = originals.length;
-    var GAP = 16, DELAY = 4500;
+    var GAP = 16, DELAY = 3500;
+    // "hovering" só vale durante o arraste; o carrossel continua girando com mouse em cima ou foco nos botões
     var pv = 0, idx = 0, step = 0, busy = false, timer = null, hovering = false, inView = true;
 
     function perView() { return window.innerWidth >= 900 ? 2 : 1; }
@@ -214,10 +215,6 @@
 
     prevBtn.addEventListener("click", function () { go(-1); start(); });
     nextBtn.addEventListener("click", function () { go(1); start(); });
-    root.addEventListener("mouseenter", function () { hovering = true; stop(); });
-    root.addEventListener("mouseleave", function () { hovering = false; start(); });
-    root.addEventListener("focusin", function () { hovering = true; stop(); });
-    root.addEventListener("focusout", function () { hovering = false; start(); });
     document.addEventListener("visibilitychange", start);
     root.addEventListener("keydown", function (e) {
       if (e.key === "ArrowLeft") { go(-1); start(); }
@@ -240,7 +237,7 @@
     function endDrag() {
       if (!drag) return;
       drag = false; track.classList.remove("is-dragging");
-      hovering = root.matches(":hover");
+      hovering = false;
       if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1); else place(true);
       start();
     }

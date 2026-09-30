@@ -137,25 +137,130 @@
     }
   })();
 
-  // Loja: a seção fica presa e a rolagem vertical vira deslocamento horizontal
+  // Loja: carrossel infinito com rolagem automática, botões laterais, pontos e swipe
   (function () {
-    var section = document.getElementById("loja"), track = document.getElementById("lojaTrack");
-    if (!section || !track || reduce) return;
-    var pan = 0;
-    function recalc() {
-      var prev = track.style.transform;
-      track.style.transform = "translateX(0px)";
-      pan = Math.max(track.getBoundingClientRect().left + track.scrollWidth - window.innerWidth, 0);
-      track.style.transform = prev;
-      section.style.height = pan + window.innerHeight + "px";
+    var root = document.getElementById("carousel");
+    if (!root) return;
+    var viewport = root.querySelector(".c-viewport");
+    var track = root.querySelector(".c-track");
+    var prevBtn = root.querySelector(".c-prev");
+    var nextBtn = root.querySelector(".c-next");
+    var dotsEl = document.getElementById("cDots");
+    var originals = Array.prototype.slice.call(track.children);
+    var n = originals.length;
+    var GAP = 16, DELAY = 4500;
+    var pv = 0, idx = 0, step = 0, busy = false, timer = null, hovering = false, inView = true;
+
+    function perView() { return window.innerWidth >= 900 ? 2 : 1; }
+
+    function build() {
+      pv = perView();
+      Array.prototype.slice.call(track.querySelectorAll("[data-clone]")).forEach(function (c) { c.remove(); });
+      for (var i = 0; i < pv; i++) {
+        var a = originals[n - 1 - i].cloneNode(true), b = originals[i].cloneNode(true);
+        [a, b].forEach(function (c) {
+          c.setAttribute("data-clone", "1");
+          c.setAttribute("aria-hidden", "true");
+          Array.prototype.slice.call(c.querySelectorAll("a,button")).forEach(function (x) { x.tabIndex = -1; });
+        });
+        track.insertBefore(a, track.firstChild);
+        track.appendChild(b);
+      }
+      idx = pv;
+      measure();
+      place(false);
+      dots();
     }
-    recalc();
-    window.addEventListener("resize", recalc);
-    window.addEventListener("load", recalc);
-    onScrollFrame(function () {
-      if (pan <= 0) { track.style.transform = ""; return; }
-      var progress = clamp(-section.getBoundingClientRect().top / pan, 0, 1);
-      track.style.transform = "translateX(-" + progress * pan + "px)";
+
+    function measure() { step = originals[0].getBoundingClientRect().width + GAP; }
+
+    function place(animate) {
+      track.classList.toggle("is-anim", !!animate && !reduce);
+      track.style.transform = "translateX(" + -idx * step + "px)";
+      var cur = (((idx - pv) % n) + n) % n;
+      Array.prototype.slice.call(dotsEl.children).forEach(function (d, i) { d.classList.toggle("is-active", i === cur); });
+    }
+
+    function dots() {
+      dotsEl.innerHTML = "";
+      for (var i = 0; i < n; i++) dotsEl.appendChild(document.createElement("span"));
+      place(false);
+    }
+
+    function go(dir) {
+      if (busy) return;
+      busy = true;
+      idx += dir;
+      place(true);
+      if (reduce) settle();
+    }
+
+    // Ao terminar a animação nas cópias das pontas, salta sem transição pro item real
+    function settle() {
+      track.classList.remove("is-anim");
+      if (idx >= n + pv) idx -= n;
+      else if (idx < pv) idx += n;
+      place(false);
+      busy = false;
+    }
+    track.addEventListener("transitionend", function (e) { if (e.target === track && busy) settle(); });
+
+    function stop() { if (timer) { clearInterval(timer); timer = null; } }
+    function start() {
+      stop();
+      if (reduce || hovering || !inView || document.hidden) return;
+      timer = setInterval(function () { go(1); }, DELAY);
+    }
+
+    prevBtn.addEventListener("click", function () { go(-1); start(); });
+    nextBtn.addEventListener("click", function () { go(1); start(); });
+    root.addEventListener("mouseenter", function () { hovering = true; stop(); });
+    root.addEventListener("mouseleave", function () { hovering = false; start(); });
+    root.addEventListener("focusin", function () { hovering = true; stop(); });
+    root.addEventListener("focusout", function () { hovering = false; start(); });
+    document.addEventListener("visibilitychange", start);
+    root.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowLeft") { go(-1); start(); }
+      if (e.key === "ArrowRight") { go(1); start(); }
     });
+
+    // Arrastar com o dedo/mouse
+    var sx = 0, dx = 0, drag = false;
+    viewport.addEventListener("pointerdown", function (e) {
+      if (busy || e.target.closest("a")) return;
+      drag = true; sx = e.clientX; dx = 0; hovering = true; stop();
+      track.classList.remove("is-anim"); track.classList.add("is-dragging");
+      if (viewport.setPointerCapture) viewport.setPointerCapture(e.pointerId);
+    });
+    viewport.addEventListener("pointermove", function (e) {
+      if (!drag) return;
+      dx = e.clientX - sx;
+      track.style.transform = "translateX(" + (-idx * step + dx) + "px)";
+    });
+    function endDrag() {
+      if (!drag) return;
+      drag = false; track.classList.remove("is-dragging");
+      hovering = root.matches(":hover");
+      if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1); else place(true);
+      start();
+    }
+    viewport.addEventListener("pointerup", endDrag);
+    viewport.addEventListener("pointercancel", endDrag);
+
+    if (hasIO) {
+      new IntersectionObserver(function (entries) {
+        inView = entries[0].isIntersecting; start();
+      }, { threshold: 0.25 }).observe(root);
+    }
+
+    var lastPv = perView();
+    window.addEventListener("resize", function () {
+      if (perView() !== lastPv) { lastPv = perView(); build(); }
+      else { measure(); place(false); }
+    });
+    window.addEventListener("load", function () { measure(); place(false); });
+
+    build();
+    start();
   })();
 })();

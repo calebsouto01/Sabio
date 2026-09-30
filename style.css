@@ -90,13 +90,21 @@ h2{font-size:clamp(1.6rem,3.5vw,2.3rem);color:var(--gold);margin-bottom:8px}
 .panel-details p{color:var(--mut)}
 @media(max-width:700px){.plans{height:340px}.panel-details{white-space:normal;padding:0 8px}.panel-details h3{font-size:1.15rem}}
 
-/* Loja: rolagem vertical vira horizontal */
-.loja-scroll{padding:0}
-.loja-pin{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;justify-content:center;gap:8px;overflow:hidden;padding-top:70px}
-.loja-head{padding-inline:max(5%,calc((100% - var(--wrap))/2))}
-.loja-head .sub{margin-bottom:12px}
-.loja-track{display:flex;gap:16px;width:max-content;margin-left:max(5%,calc((100vw - var(--wrap))/2));padding-right:max(5vw,calc((100vw - var(--wrap))/2));will-change:transform}
-.loja-card{flex:0 0 clamp(250px,min(62vw,calc((100vh - 300px)*1.25)),540px);background:var(--card);border:1px solid #2a2a32;border-radius:var(--r);padding:14px;transition:transform .25s ease-out,box-shadow .25s ease-out,border-color .25s ease-out}
+/* Loja: carrossel automático com botões laterais */
+.carousel{position:relative}
+.c-viewport{overflow:hidden;border-radius:var(--r);touch-action:pan-y}
+.c-track{display:flex;gap:16px;will-change:transform;cursor:grab}
+.c-track.is-dragging{cursor:grabbing}
+.c-track.is-anim{transition:transform .6s cubic-bezier(.65,0,.35,1)}
+.c-btn{position:absolute;top:calc(50% - 60px);z-index:5;width:48px;height:48px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(13,13,15,.75);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:var(--gold);font-size:2rem;line-height:1;display:grid;place-items:center;cursor:pointer;transition:background .2s,transform .2s,border-color .2s;padding-bottom:4px}
+.c-btn:hover{background:var(--gold);color:#111;border-color:var(--gold);transform:scale(1.08)}
+.c-btn:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
+.c-prev{left:8px}.c-next{right:8px}
+@media(min-width:900px){.c-prev{left:-24px}.c-next{right:-24px}}
+.c-dots{display:flex;justify-content:center;gap:8px;margin-top:20px}
+.c-dots span{width:8px;height:8px;border-radius:999px;background:#3a3a44;transition:width .3s,background .3s}
+.c-dots span.is-active{width:26px;background:var(--gold)}
+.loja-card{flex:0 0 calc((100% - 16px)/2);min-width:0;background:var(--card);border:1px solid #2a2a32;border-radius:var(--r);padding:14px;transition:transform .25s ease-out,box-shadow .25s ease-out,border-color .25s ease-out}
 .loja-card:hover{transform:translateY(-6px);box-shadow:0 20px 34px rgba(0,0,0,.5);border-color:rgba(212,175,55,.4)}
 .loja-photo{aspect-ratio:4/3;border-radius:12px;overflow:hidden;margin-bottom:12px}
 .loja-photo img{width:100%;height:100%;object-fit:cover;transition:transform .4s ease-out}
@@ -107,6 +115,7 @@ h2{font-size:clamp(1.6rem,3.5vw,2.3rem);color:var(--gold);margin-bottom:8px}
 .loja-end h3{color:var(--gold);font-size:1.5rem}
 .loja-end .btn{align-self:flex-start;margin-top:6px}
 
+@media(max-width:899px){.loja-card{flex-basis:100%}}
 .contact{display:flex;flex-wrap:wrap;gap:14px;margin-top:20px}
 
 footer{text-align:center;padding:28px 5%;color:var(--mut);font-size:.85rem;border-top:1px solid #26262d}
@@ -129,6 +138,5 @@ footer{text-align:center;padding:28px 5%;color:var(--mut);font-size:.85rem;borde
   *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
   .reveal{opacity:1;transform:none}
   .folha{position:static}
-  .loja-pin{position:static;height:auto;padding:72px 0}
-  .loja-track{width:auto;overflow-x:auto;margin-left:0;padding-inline:5%}
+  .c-track{transition:none!important}
 }

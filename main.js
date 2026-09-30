@@ -281,8 +281,8 @@
     var sparks = Array.prototype.slice.call($("sparks").children), dust = Array.prototype.slice.call($("dust").children);
 
     // ---------- linha do tempo (segundos, ciclo de 12,4 s; a abertura pula direto para 1 s antes da queda) ----------
-    var CY = 12.4, OPEN_HOLD = 1.0;
-    var T = { wind: 3.0, drop: 3.7, imp: 4.06, frz: 4.16, rise: 6.6, riseEnd: 8.3, heal: 9.0, healEnd: 10.2, birth: 10.2, birthEnd: 11.9 };
+    var CY = 13.15, OPEN_HOLD = 1.0;
+    var T = { wind: 3.0, drop: 4.3, imp: 4.8, frz: 4.9, rise: 7.35, riseEnd: 9.05, heal: 9.75, healEnd: 10.95, birth: 10.95, birthEnd: 12.65 };
 
     function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
     function mix(a, b, k) { return a + (b - a) * k; }
@@ -317,10 +317,10 @@
         var a = j * 2.39996 + r() * 0.7, rad = Math.sqrt((j + 0.5) / N), st = ringPose(j, T.imp);
         var ax = OX + Math.cos(a) * rad * 88, ay = FL - 5 + Math.sin(a) * rad * 13;
         return { x: ax - p.cx, y: ay - p.cy, z: -18 + r() * 42, rx: 70 + r() * 12, ry: (r() - 0.5) * 16, rz: st.rz + (r() < 0.5 ? -1 : 1) * (120 + r() * 200),
-                 s: 0.8 + r() * 0.12, d: r() * 0.09, D: 0.7 + r() * 0.3, H: 26 + r() * 40, B: 5 + r() * 8, st: st };
+                 s: 0.8 + r() * 0.12, d: r() * 0.09, D: 0.7 + r() * 0.3, H: 8 + r() * 20, B: 5 + r() * 8, st: st };
       });
       // a maçã não quebra: cai inteira no meio do monte
-      AF = { x: OX - AP.cx, y: FL - 10 - AP.cy, z: 8, rx: 68, ry: 0, rz: 10, s: 0.82, d: 0.03, D: 0.85, H: 22, B: 6 };
+      AF = { x: OX - AP.cx, y: FL - 10 - AP.cy, z: 8, rx: 68, ry: 0, rz: 10, s: 0.82, d: 0.03, D: 0.85, H: 10, B: 6 };
       // rachaduras a partir do ponto de impacto: peças mais longas pegam as direções mais longas
       var dirs = [], k;
       for (k = 0; k < N; k++) {
@@ -360,10 +360,7 @@
 
     function pieceAt(i, tc) {
       if (tc < T.wind) return ringPose(i, tc);
-      if (tc < T.imp) {                        // tremor leve enquanto a logo inteira sobe e cai (ver wrapper)
-        var q = ringPose(i, tc), a = k01(tc, T.wind, T.drop) * 1.4;
-        q.x += Math.sin(tc * 97 + i * 7) * a; q.y += Math.cos(tc * 83 + i * 5) * a; return q;
-      }
+      if (tc < T.imp) return ringPose(i, tc);   // a logo inteira sobe e cai (ver wrapper), sem vibrar
       if (tc < T.frz) return ringPose(i, T.imp);
       var f = F[i];
       if (tc < T.rise + i * 0.035) return flight(f, tc);                       // voa, quica e fica no chão
@@ -388,7 +385,7 @@
     function appleAt(tc) {
       var ghost = { x: 0, y: 0, z: 4, rx: 0, ry: 0, rz: 0, s: 0.9, th: 1, op: 0.42 };
       if (tc < T.wind) return ID;
-      if (tc < T.frz) { var am = tc < T.drop ? 0.6 : 0.4, q = { x: Math.sin(tc * 110) * am / 4, y: Math.cos(tc * 95) * am / 4, z: 0, rx: 0, ry: 0, rz: 0, s: 1, th: 1, op: 1 }; return q; }
+      if (tc < T.frz) return ID;
       if (tc < T.rise) return flight(AF, tc, { x: 0, y: 0, rx: 0, rz: 0 });
       if (tc < T.riseEnd) {
         var k = ease3(k01(tc, T.rise + 0.1, T.riseEnd - 0.1)), r = mixPose(restOf(AF), ghost, k);
@@ -404,20 +401,20 @@
     function wrapperAt(tc) {
       var w = { y: 0, rot: 0, sx: 1, sy: 1, jx: 0, jy: 0 };
       if (tc < T.wind) return w;
-      if (tc < T.drop) {                       // sobe devagar (como se fosse lançada) e hesita no topo
-        w.y = -RH * outCubic(k01(tc, T.wind, T.drop - 0.12));
-        w.jx = Math.sin(tc * 60) * 0.8; return w;
+      if (tc < T.drop) {                       // sobe suave (sem tremer), desacelera e hesita no topo
+        var ku = k01(tc, T.wind, T.wind + 1.15);
+        w.y = -RH * (0.5 - 0.5 * Math.cos(Math.PI * ku)) - 3 * k01(tc, T.wind + 1.15, T.drop); w.rot = 1.5 * Math.sin(Math.PI * ku); return w;
       }
-      if (tc < T.imp) {                        // cai acelerando, girando um pouco
-        var k = k01(tc, T.drop, T.imp);
-        w.y = -RH * (1 - k * k); w.rot = -5 * k; w.sy = 1 + 0.05 * k; w.sx = 1 - 0.03 * k; return w;
+      if (tc < T.imp) {                        // despenca: acelera, inclina e estica com a velocidade
+        var k = k01(tc, T.drop, T.imp), y0 = -RH - 3;
+        w.y = y0 * (1 - k * k); w.rot = 1.5 - 9.5 * k; w.sy = 1 + 0.08 * k; w.sx = 1 - 0.05 * k; return w;
       }
       var t = tc - T.imp;
       if (t < 0.1) { w.y = 3; w.sy = 0.84; w.sx = 1.1; w.rot = -1; return w; }        // achata no impacto
       t -= 0.1;
       if (t < 1.1) {                           // quica e se recompõe (amortecido)
         var dcy = Math.exp(-t * 6.5);
-        w.y = -RH * 0.45 * Math.abs(Math.sin(t * 9.5)) * dcy;
+        w.y = -Math.min(RH * 0.22, 24) * Math.abs(Math.sin(t * 9.5)) * dcy;
         var sq = Math.cos(t * 26) * Math.exp(-t * 9);
         w.sy = 1 - 0.16 * sq; w.sx = 1 + 0.1 * sq; w.rot = -1 * Math.exp(-t * 8);
         w.jx = Math.sin(t * 110) * 5 * Math.exp(-t * 10); w.jy = Math.cos(t * 95) * 4 * Math.exp(-t * 10);
@@ -443,7 +440,7 @@
     }
     function render(tc, tabs) {
       var i, v, sw = stage.clientWidth || 464, sk = sw / 464;
-      RH = Math.max(18, (stage.clientHeight || 500) * 0.13);
+      RH = Math.max(26, (stage.clientHeight || 500) * 0.17);
       for (i = 0; i < N; i++) {
         var p = pieceAt(i, tc), ang = P[i].ang.toFixed(1), nang = (-P[i].ang).toFixed(1);
         els[i].style.transform = poseStr(p) + " rotateZ(" + ang + "deg) scale(1," + p.th.toFixed(3) + ") rotateZ(" + nang + "deg)";

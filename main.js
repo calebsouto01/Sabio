@@ -260,4 +260,32 @@
     build();
     start();
   })();
+
+  // Hero: palco 3D da logo — inclina com o mouse, pausa fora da tela, sem movimento se o usuário preferir
+  (function () {
+    var stage = document.getElementById("logoStage"), tilt = document.getElementById("tilt");
+    if (!stage || !tilt) return;
+    if (reduce) {
+      Array.prototype.slice.call(document.querySelectorAll("animateTransform")).forEach(function (a) { a.remove(); });
+      return;
+    }
+    var hero = stage.closest(".hero") || stage;
+    if (window.matchMedia && window.matchMedia("(hover: hover)").matches) {
+      hero.addEventListener("pointermove", function (e) {
+        var r = hero.getBoundingClientRect();
+        var x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
+        tilt.style.setProperty("--ry", (x * 34).toFixed(1) + "deg");
+        tilt.style.setProperty("--rx", (-y * 24).toFixed(1) + "deg");
+      });
+      hero.addEventListener("pointerleave", function () {
+        tilt.style.setProperty("--ry", "0deg");
+        tilt.style.setProperty("--rx", "0deg");
+      });
+    }
+    if (hasIO) {
+      new IntersectionObserver(function (entries) {
+        stage.classList.toggle("is-off", !entries[0].isIntersecting);
+      }, { threshold: 0.05 }).observe(stage);
+    }
+  })();
 })();

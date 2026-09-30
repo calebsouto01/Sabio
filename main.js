@@ -261,8 +261,8 @@
     start();
   })();
 
-  // Hero: logo 3D — cai e bate no chão, quebra como tela trincada, forma um celular e se conserta.
-  // Roda sozinha (sem clique nem interação).
+  // Hero: logo 3D — cai e bate no chão, os cacos assentam no piso, o celular de tela trincada levanta
+  // do monte, a tela se cura e a logo nasce de dentro dela. Roda sozinha, em ciclo.
   (function () {
     var stage = document.getElementById("logoStage");
     if (!stage) return;
@@ -272,54 +272,55 @@
       return;
     }
     var D = JSON.parse(dataEl.textContent);
-    var OX = D.ox, OY = D.oy, VS = D.vs, U = 100 / VS, P = D.pieces, N = P.length;
+    var OX = D.ox, OY = D.oy, VS = D.vs, U = 100 / VS, P = D.pieces, N = P.length, AP = D.apple;
+    var FL = D.vy + 0.96 * D.vs;                       // altura do chão, em unidades do desenho
     var els = Array.prototype.slice.call(stage.querySelectorAll(".pc"));
     var $ = function (id) { return document.getElementById(id); };
-    var applePose = $("applePose"), phone = $("phone"), scan = $("scan"), shake = $("shake");
-    var shock1 = $("shock1"), shock2 = $("shock2"), status = $("stageStatus");
+    var applePose = $("applePose"), phone = $("phone"), scan = $("scan"), shake = $("shake"), sway = stage.querySelector(".sway");
+    var shock1 = $("shock1"), shock2 = $("shock2"), bloom = $("bloom");
     var sparks = Array.prototype.slice.call($("sparks").children), dust = Array.prototype.slice.call($("dust").children);
 
-    // ---------- linha do tempo (segundos, ciclo de 15 s) ----------
-    var CY = 15;
-    var T = { wind: 4.3, drop: 5.0, imp: 5.36, frz: 5.46, bur: 6.45, dr: 7.6, asm: 9.5, hold: 10.9, rep: 11.15, repEnd: 12.45, res: 12.9 };
+    // ---------- linha do tempo (segundos, ciclo de 12,4 s; a abertura pula direto para 1 s antes da queda) ----------
+    var CY = 12.4, OPEN_HOLD = 1.0;
+    var T = { wind: 3.0, drop: 3.7, imp: 4.06, frz: 4.16, rise: 6.6, riseEnd: 8.3, heal: 9.0, healEnd: 10.2, birth: 10.2, birthEnd: 11.9 };
 
     function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
     function mix(a, b, k) { return a + (b - a) * k; }
     function k01(t, a, b) { return clamp((t - a) / (b - a), 0, 1); }
     function ease3(k) { return k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2; }
     function outCubic(k) { return 1 - Math.pow(1 - k, 3); }
+    function outQuad(k) { return 1 - (1 - k) * (1 - k); }
     function outBack(k) { var c1 = 1.25, c3 = c1 + 1; return 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2); }
     function rng(seed) {
       return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
     }
     function mixPose(a, b, k) {
-      return { x: mix(a.x, b.x, k), y: mix(a.y, b.y, k), z: mix(a.z, b.z, k), rx: mix(a.rx, b.rx, k), ry: mix(a.ry, b.ry, k), rz: mix(a.rz, b.rz, k), s: mix(a.s, b.s, k), th: mix(a.th, b.th, k) };
+      return { x: mix(a.x, b.x, k), y: mix(a.y, b.y, k), z: mix(a.z, b.z, k), rx: mix(a.rx, b.rx, k), ry: mix(a.ry, b.ry, k), rz: mix(a.rz, b.rz, k), s: mix(a.s, b.s, k), th: mix(a.th, b.th, k), op: mix(a.op, b.op, k) };
     }
-    var ID = { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, s: 1, th: 1 };
+    var ID = { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, s: 1, th: 1, op: 1 };
 
-    // ---------- giro das trilhas (estado "logo") ----------
+    // ---------- giro das trilhas (estado "logo"): recomeça do zero a cada ciclo ----------
     function ramp(dt) { var r = 1.2; return dt < r ? dt * dt / (2 * r) : dt - r / 2; }
-    function ringAngle(g, tc) {
-      var dt = tc >= T.res ? tc - T.res : tc + CY - T.res;
-      var a = ramp(dt);
-      return g === "long" ? a * 7.8 : -a * 12;
-    }
     function ringPose(i, tc) {
-      var p = P[i], th = ringAngle(p.g, tc), r = th * Math.PI / 180, dx = p.cx - OX, dy = p.cy - OY;
-      return { x: dx * Math.cos(r) - dy * Math.sin(r) - dx, y: dx * Math.sin(r) + dy * Math.cos(r) - dy, z: 0, rx: 0, ry: 0, rz: th, s: 1, th: 1 };
+      var p = P[i], a = ramp(tc), th = p.g === "long" ? a * 7.8 : -a * 12, r = th * Math.PI / 180, dx = p.cx - OX, dy = p.cy - OY;
+      return { x: dx * Math.cos(r) - dy * Math.sin(r) - dx, y: dx * Math.sin(r) + dy * Math.cos(r) - dy, z: 0, rx: 0, ry: 0, rz: th, s: 1, th: 1, op: 1 };
     }
 
-    // ---------- estados por ciclo: dispersão e celular ----------
+    // ---------- estados por ciclo: queda no chão e celular ----------
     var SCR = { w: 124, h: 260 }, IMPACT = { x: OX + 12, y: OY + 36 };
-    var S = [], PH = [], cycleId = -1;
+    var F = [], PH = [], PHY = [], AF = null, cycleId = -1;
     function buildCycle(n) {
       cycleId = n;
-      var r = rng(n * 7919 + 13);
-      S = P.map(function (p) {
-        var a = r() * Math.PI * 2, rad = 62 + r() * 58;
-        return { x: Math.cos(a) * rad + (OX - p.cx), y: Math.sin(a) * rad + (OY - p.cy), z: -60 + r() * 150,
-                 rx: (r() - 0.5) * 150, ry: (r() - 0.5) * 150, rz: (r() - 0.5) * 360, s: 0.75 + r() * 0.45, th: 1, ph: r() * 6.28, amp: 5 + r() * 8 };
+      var r = rng(n * 7919 + 13), i;
+      // cacos que assentam no chão (elipse rasa), com salto e giro próprios
+      F = P.map(function (p, j) {
+        var a = j * 2.39996 + r() * 0.7, rad = Math.sqrt((j + 0.5) / N), st = ringPose(j, T.imp);
+        var ax = OX + Math.cos(a) * rad * 88, ay = FL - 5 + Math.sin(a) * rad * 13;
+        return { x: ax - p.cx, y: ay - p.cy, z: -18 + r() * 42, rx: 70 + r() * 12, ry: (r() - 0.5) * 16, rz: st.rz + (r() < 0.5 ? -1 : 1) * (120 + r() * 200),
+                 s: 0.8 + r() * 0.12, d: r() * 0.09, D: 0.7 + r() * 0.3, H: 26 + r() * 40, B: 5 + r() * 8, st: st };
       });
+      // a maçã não quebra: cai inteira no meio do monte
+      AF = { x: OX - AP.cx, y: FL - 10 - AP.cy, z: 8, rx: 68, ry: 0, rz: 10, s: 0.82, d: 0.03, D: 0.85, H: 22, B: 6 };
       // rachaduras a partir do ponto de impacto: peças mais longas pegam as direções mais longas
       var dirs = [], k;
       for (k = 0; k < N; k++) {
@@ -328,53 +329,74 @@
         if (sa > 0) t = Math.min(t, (OY + SCR.h / 2 - IMPACT.y) / sa); else if (sa < 0) t = Math.min(t, (OY - SCR.h / 2 - IMPACT.y) / sa);
         dirs.push({ a: a2, t: t });
       }
-      var byLen = P.map(function (p, i) { return i; }).sort(function (a, b) { return P[b].len - P[a].len; });
+      var byLen = P.map(function (p, j) { return j; }).sort(function (a, b) { return P[b].len - P[a].len; });
       dirs.sort(function (a, b) { return b.t - a.t; });
-      PH = new Array(N);
+      PH = new Array(N); PHY = new Array(N);
       byLen.forEach(function (i, rank) {
         var p = P[i], d = dirs[rank], gap = 7 + (rank % 3) * 5, cd = Math.abs(Math.cos(d.a)), sd = Math.abs(Math.sin(d.a));
         var s = clamp(Math.min((d.t - gap) * 0.9, p.len) / p.len, 0.3, 1);
-        // a peça inteira (comprimento + dobras já afinadas) precisa caber dentro da tela
         s = Math.min(s, (SCR.w / 2 - 4) / (cd * p.len / 2 + sd * p.rad * 0.35 + 0.001), (SCR.h / 2 - 4) / (sd * p.len / 2 + cd * p.rad * 0.35 + 0.001));
-        var half = s * p.len / 2, w2 = s * p.rad * 0.35;
-        var hx = cd * half + sd * w2, hy = sd * half + cd * w2;
+        var half = s * p.len / 2, w2 = s * p.rad * 0.35, hx = cd * half + sd * w2, hy = sd * half + cd * w2;
         var mx = IMPACT.x + Math.cos(d.a) * (gap + half), my = IMPACT.y + Math.sin(d.a) * (gap + half);
         mx = clamp(mx, OX - SCR.w / 2 + hx + 2, OX + SCR.w / 2 - hx - 2); my = clamp(my, OY - SCR.h / 2 + hy + 2, OY + SCR.h / 2 - hy - 2);
         var rz = d.a * 180 / Math.PI - p.ang;
-        rz += 360 * Math.round((S[i].rz - rz) / 360);
-        PH[i] = { x: mx - p.cx, y: my - p.cy, z: 6, rx: 0, ry: 0, rz: rz, s: s, th: 0.42 };   // linhas finas e suaves
+        rz += 360 * Math.round((F[i].rz - rz) / 360);
+        PH[i] = { x: mx - p.cx, y: my - p.cy, z: 6, rx: 0, ry: 0, rz: rz, s: s, th: 0.42, op: 1 };
+        PHY[i] = clamp((my - (OY - SCR.h / 2)) / SCR.h, 0, 1);   // altura da peça na tela (0 topo, 1 base)
       });
     }
-    function scatterAt(i, tc) {
-      var b = S[i];
-      return { x: b.x + Math.sin(tc * 1.3 + b.ph) * b.amp, y: b.y + Math.cos(tc * 1.1 + b.ph * 1.7) * b.amp, z: b.z + Math.sin(tc * 0.9 + b.ph) * 14,
-               rx: b.rx + Math.sin(tc * 0.7 + b.ph) * 16, ry: b.ry + Math.cos(tc * 0.6 + b.ph) * 16, rz: b.rz + Math.sin(tc * 0.5 + b.ph * 2) * 20, s: b.s, th: 1 };
+    // voo dos cacos: sobem em arco, caem, quicam e assentam deitados no chão
+    function flight(f, tc, home) {
+      var t = tc - T.frz - f.d, k = clamp(t / f.D, 0, 1), st = home || f.st;
+      var q = { x: mix(st.x, f.x, outQuad(k)), y: mix(st.y, f.y, k) - f.H * 4 * k * (1 - k), z: f.z * outQuad(k),
+                rx: mix(st.rx || 0, f.rx, ease3(k)), ry: f.ry * Math.sin(k * Math.PI), rz: mix(st.rz || 0, f.rz, outCubic(k)), s: mix(1, f.s, k), th: 1, op: 1 };
+      if (t > f.D) {
+        var u = t - f.D, dm = Math.exp(-u * 6);
+        q.y -= f.B * dm * Math.abs(Math.sin(u * 12)); q.rx += 4 * Math.exp(-u * 5) * Math.sin(u * 17); q.rz += 3 * Math.exp(-u * 4) * Math.sin(u * 11);
+      }
+      return q;
     }
+    function restOf(f) { return { x: f.x, y: f.y, z: f.z, rx: f.rx, ry: 0, rz: f.rz, s: f.s, th: 1, op: 1 }; }
+
     function pieceAt(i, tc) {
-      var d = i * 0.03;
       if (tc < T.wind) return ringPose(i, tc);
-      if (tc < T.imp) {                        // sobe, hesita e cai: a logo inteira se move (ver wrapper); aqui só um leve tremor
+      if (tc < T.imp) {                        // tremor leve enquanto a logo inteira sobe e cai (ver wrapper)
         var q = ringPose(i, tc), a = k01(tc, T.wind, T.drop) * 1.4;
         q.x += Math.sin(tc * 97 + i * 7) * a; q.y += Math.cos(tc * 83 + i * 5) * a; return q;
       }
-      if (tc < T.frz) return ringPose(i, T.imp);   // instante do impacto
-      if (tc < T.dr - 1.15) {                  // estilhaça a partir do chão
-        return mixPose(ringPose(i, T.imp), scatterAt(i, tc), outCubic(k01(tc, T.frz + d * 0.6, T.bur)));
+      if (tc < T.frz) return ringPose(i, T.imp);
+      var f = F[i];
+      if (tc < T.rise + i * 0.035) return flight(f, tc);                       // voa, quica e fica no chão
+      if (tc < T.riseEnd) {                                                    // levanta do monte e vira as rachaduras do celular
+        var st0 = T.rise + i * 0.035, k = ease3(k01(tc, st0, st0 + 1.25)), r = mixPose(restOf(f), PH[i], k), arc = Math.sin(Math.PI * k);
+        r.y -= 26 * arc; r.z += 40 * arc; return r;
       }
-      if (tc < T.dr) return scatterAt(i, tc);
-      if (tc < T.asm + 0.05) {                 // reúne no formato de celular (suave)
-        return mixPose(scatterAt(i, tc), PH[i], ease3(k01(tc, T.dr + d, T.asm)));
+      var h = PH[i], br = Math.sin(tc * 2.4 + i) * 0.4;
+      var pose = { x: h.x, y: h.y, z: h.z + br, rx: 0, ry: 0, rz: h.rz, s: h.s, th: h.th, op: 1 };
+      if (tc < T.birth - 0.001) {                                              // a tela é curada: o feixe apaga as rachaduras por onde passa
+        var v = k01(tc, T.heal, T.heal + 0.75), fade = clamp((v - PHY[i]) / 0.14, 0, 1);
+        if (tc >= T.heal) { pose.op = 1 - ease3(fade); pose.s = h.s * (1 - 0.12 * fade); }
+        return pose;
       }
-      if (tc < T.hold) {                       // celular trincado
-        var h = PH[i], br = Math.sin(tc * 2.4 + i) * 0.4; return { x: h.x, y: h.y, z: h.z + br, rx: 0, ry: 0, rz: h.rz, s: h.s, th: h.th };
+      if (tc < T.birthEnd) {                                                   // a logo nasce de dentro da tela e cresce
+        var b0 = T.birth + i * 0.02, kb = k01(tc, b0, T.birthEnd);
+        var seed = { x: OX - P[i].cx, y: OY - P[i].cy, z: -6, rx: 0, ry: 0, rz: (i % 2 ? 1 : -1) * 110, s: 0.05, th: 1, op: 0 };
+        var g = mixPose(seed, ID, outBack(kb)); g.op = clamp(kb * 3.2, 0, 1); return g;
       }
-      var st = PH[i], start = { x: st.x, y: st.y, z: 40, rx: 0, ry: 0, rz: st.rz - 360 * Math.round(st.rz / 360), s: st.s, th: st.th };
-      if (tc < T.rep + 0.25 + d) {             // solta do vidro
-        var lift = ease3(k01(tc, T.hold, T.rep + 0.25));
-        return { x: st.x, y: st.y, z: mix(st.z, 40, lift), rx: 0, ry: 0, rz: start.rz, s: st.s, th: st.th };
+      return ID;
+    }
+    function appleAt(tc) {
+      var ghost = { x: 0, y: 0, z: 4, rx: 0, ry: 0, rz: 0, s: 0.9, th: 1, op: 0.42 };
+      if (tc < T.wind) return ID;
+      if (tc < T.frz) { var am = tc < T.drop ? 0.6 : 0.4, q = { x: Math.sin(tc * 110) * am / 4, y: Math.cos(tc * 95) * am / 4, z: 0, rx: 0, ry: 0, rz: 0, s: 1, th: 1, op: 1 }; return q; }
+      if (tc < T.rise) return flight(AF, tc, { x: 0, y: 0, rx: 0, rz: 0 });
+      if (tc < T.riseEnd) {
+        var k = ease3(k01(tc, T.rise + 0.1, T.riseEnd - 0.1)), r = mixPose(restOf(AF), ghost, k);
+        r.y -= 30 * Math.sin(Math.PI * k); r.z += 30 * Math.sin(Math.PI * k); return r;
       }
-      if (tc < T.repEnd + 0.4) return mixPose(start, ID, outBack(k01(tc, T.rep + 0.25 + d, T.repEnd)));   // encaixa de volta na logo
-      return tc < T.res ? ID : ringPose(i, tc);
+      if (tc < T.birth) { var lit = k01(tc, T.heal + 0.5, T.healEnd); return { x: 0, y: 0, z: 4, rx: 0, ry: 0, rz: 0, s: 0.9, th: 1, op: mix(0.42, 0.56, lit) + Math.sin(tc * 3.4) * 0.05 }; }
+      if (tc < T.birthEnd) { var g = mixPose({ x: 0, y: 0, z: 4, rx: 0, ry: 0, rz: 0, s: 0.9, th: 1, op: 0.56 }, ID, outBack(k01(tc, T.birth + 0.1, T.birthEnd))); g.op = clamp(g.op, 0, 1); return g; }
+      return ID;
     }
 
     // ---------- queda e impacto no chão (a logo inteira) ----------
@@ -400,30 +422,40 @@
         w.sy = 1 - 0.16 * sq; w.sx = 1 + 0.1 * sq; w.rot = -1 * Math.exp(-t * 8);
         w.jx = Math.sin(t * 110) * 5 * Math.exp(-t * 10); w.jy = Math.cos(t * 95) * 4 * Math.exp(-t * 10);
       }
-      // conserto: pequeno "estalo" ao encaixar
-      var t2 = tc - (T.repEnd - 0.1);
+      // a logo termina de nascer: pequeno "estalo" ao assentar
+      var t2 = tc - (T.birthEnd - 0.15);
       if (t2 >= 0 && t2 < 0.5) { var e = Math.exp(-t2 * 9) * Math.sin(t2 * 30); w.sy *= 1 - 0.05 * e; w.sx *= 1 + 0.03 * e; }
       return w;
     }
-
-    // ---------- estados dos demais elementos ----------
-    var lastStatus = "";
-    function setStatus(txt, bad) {
-      var key = txt + (bad ? "!" : "");
-      if (key === lastStatus) return; lastStatus = key;
-      status.textContent = txt; status.classList.toggle("on", !!txt); status.classList.toggle("bad", !!bad);
+    // balanço de flutuação: forte quando a logo paira, some no chão, volta suave no final
+    function swayAmp(tc) {
+      if (tc < T.drop) return 1;
+      if (tc < T.imp) return mix(1, 0.25, k01(tc, T.drop, T.imp));
+      if (tc < T.imp + 0.12) return mix(0.25, 0, k01(tc, T.imp, T.imp + 0.12));
+      if (tc < T.riseEnd - 0.5) return 0;
+      if (tc < T.birth) return mix(0, 0.4, k01(tc, T.riseEnd - 0.5, T.riseEnd + 0.3));
+      if (tc < T.birthEnd) return mix(0.4, 1, ease3(k01(tc, T.birth, T.birthEnd)));
+      return 1;
     }
-    function render(tc) {
+
+    function poseStr(p) {
+      return "translate3d(" + (p.x * U).toFixed(3) + "%," + (p.y * U).toFixed(3) + "%," + p.z.toFixed(2) + "px) rotateX(" + p.rx.toFixed(2) + "deg) rotateY(" + p.ry.toFixed(2) + "deg) rotateZ(" + p.rz.toFixed(2) + "deg) scale(" + p.s.toFixed(3) + ")";
+    }
+    function render(tc, tabs) {
       var i, v, sw = stage.clientWidth || 464, sk = sw / 464;
       RH = Math.max(18, (stage.clientHeight || 500) * 0.13);
-      // peças
       for (i = 0; i < N; i++) {
         var p = pieceAt(i, tc), ang = P[i].ang.toFixed(1), nang = (-P[i].ang).toFixed(1);
-        els[i].style.transform = "translate3d(" + (p.x * U).toFixed(3) + "%," + (p.y * U).toFixed(3) + "%," + p.z.toFixed(2) + "px) rotateX(" + p.rx.toFixed(2) + "deg) rotateY(" + p.ry.toFixed(2) + "deg) rotateZ(" + p.rz.toFixed(2) + "deg) scale(" + p.s.toFixed(3) + ") rotateZ(" + ang + "deg) scale(1," + p.th.toFixed(3) + ") rotateZ(" + nang + "deg)";
+        els[i].style.transform = poseStr(p) + " rotateZ(" + ang + "deg) scale(1," + p.th.toFixed(3) + ") rotateZ(" + nang + "deg)";
+        els[i].style.opacity = p.op.toFixed(3);
       }
+      var ap = appleAt(tc);
+      applePose.style.transform = poseStr(ap); applePose.style.opacity = clamp(ap.op, 0, 1).toFixed(3);
       // logo inteira: queda, achatamento, quique e tremor
       var w = wrapperAt(tc);
       shake.style.transform = "translate3d(" + w.jx.toFixed(2) + "px," + (w.y + w.jy).toFixed(2) + "px,0) rotate(" + w.rot.toFixed(2) + "deg) scale(" + (0.9 * w.sx).toFixed(4) + "," + (0.9 * w.sy).toFixed(4) + ")";
+      var amp = swayAmp(tc), pp = tabs * 2 * Math.PI / 9, u = (1 - Math.cos(pp)) / 2;
+      sway.style.transform = "translateY(" + ((-10 + 20 * u) * amp).toFixed(2) + "px) rotateY(" + ((-16 + 32 * u) * amp).toFixed(2) + "deg) rotateX(" + ((7 - 12 * u) * amp).toFixed(2) + "deg)";
       // sombra no chão reage à altura; onda de choque e poeira no impacto
       var raise = clamp(-w.y / RH, 0, 1), tt = tc - T.imp;
       var fsx = mix(1, 0.6, raise), fop = mix(0.75, 0.38, raise), flare = tt >= 0 && tt < 0.9 ? Math.exp(-tt * 5) : 0;
@@ -435,57 +467,52 @@
       dust.forEach(function (el, n) {
         var life = tt - (n % 3) * 0.03;
         if (life < 0 || life > 1.0) { if (el.style.opacity !== "0") el.style.opacity = 0; return; }
-        var kd = outCubic(life / 1.0), side = n % 2 ? 1 : -1, dist = (20 + (n >> 1) * 11) * sk;
-        el.style.opacity = (0.4 * (1 - life / 1.0)).toFixed(3);
+        var kd = outCubic(life), side = n % 2 ? 1 : -1, dist = (20 + (n >> 1) * 11) * sk;
+        el.style.opacity = (0.4 * (1 - life)).toFixed(3);
         el.style.transform = "translate(" + (side * dist * kd * 3).toFixed(1) + "px," + (-(6 + (n % 4) * 5) * sk * kd).toFixed(1) + "px) scale(" + (0.7 + kd * 1.1).toFixed(2) + ")";
       });
-      // maçã: núcleo que vira "fantasma" atrás do vidro e acende no conserto
-      var ao = 1, as = 1, jx = 0, jy = 0;
-      if (tc >= T.wind && tc < T.frz) { var am = tc < T.drop ? 0.6 : 0.4; jx = Math.sin(tc * 110) * am; jy = Math.cos(tc * 95) * am; }
-      if (tc >= T.frz && tc < T.rep) { var kq = ease3(k01(tc, T.frz + 0.1, 6.6)); ao = mix(1, 0.4, kq); as = mix(1, 0.9, kq); if (tc > T.asm) ao += Math.sin(tc * 3.4) * 0.08; }
-      if (tc >= T.rep && tc < T.repEnd + 0.3) { var kr = k01(tc, T.rep, T.repEnd + 0.1); ao = mix(0.4, 1, ease3(kr)); as = mix(0.9, 1, outBack(kr)); }
-      applePose.style.transform = "translate(" + jx.toFixed(2) + "px," + jy.toFixed(2) + "px) scale(" + as.toFixed(3) + ")";
-      applePose.style.opacity = ao.toFixed(3);
-      // volume das peças: achata (fica só o traço fino) enquanto vira celular
+      // volume das peças: fica só o traço fino enquanto vira rachadura; volta ao nascer a logo
       var tk = 1;
-      if (tc >= T.dr && tc < T.hold) tk = 1 - 0.9 * ease3(k01(tc, T.dr, T.asm));
-      else if (tc >= T.hold && tc < T.rep + 0.8) tk = 0.1 + 0.9 * ease3(k01(tc, T.hold + 0.3, T.rep + 0.8));
+      if (tc >= T.rise && tc < T.riseEnd) tk = 1 - 0.9 * ease3(k01(tc, T.rise, T.riseEnd));
+      else if (tc >= T.riseEnd && tc < T.birth) tk = 0.1;
+      else if (tc >= T.birth && tc < T.birthEnd) tk = 0.1 + 0.9 * ease3(k01(tc, T.birth, T.birthEnd));
       stage.style.setProperty("--tk", tk.toFixed(3));
-      // celular
-      var po = 0, ps = 0.86;
-      if (tc >= 7.35 && tc < T.rep) { v = ease3(k01(tc, 7.35, 8.8)); po = v; ps = mix(0.86, 1, v); }
-      if (tc >= T.rep && tc < T.repEnd + 0.3) { v = ease3(k01(tc, T.rep + 0.05, T.repEnd)); po = 1 - v; ps = mix(1, 0.55, v); }
-      phone.style.setProperty("--po", po.toFixed(3)); phone.style.setProperty("--ps", ps.toFixed(3));
-      // feixe de conserto
+      // celular: levanta do chão, fica de pé, acende inteiro e some quando a logo nasce
+      var po = 0, ps = 0.5, py = 7;
+      if (tc >= T.rise + 0.25 && tc < T.birth + 0.2) { v = ease3(k01(tc, T.rise + 0.25, T.riseEnd)); po = clamp(v * 1.8, 0, 1); ps = mix(0.5, 1, v); py = (1 - v) * 7; }
+      if (tc >= T.birth + 0.2 && tc < T.birthEnd) { v = ease3(k01(tc, T.birth + 0.2, T.birthEnd - 0.2)); po = 1 - v; ps = mix(1, 0.78, v); py = 0; }
+      if (tc >= T.birthEnd) { po = 0; ps = 0.78; py = 0; }
+      phone.style.setProperty("--po", po.toFixed(3)); phone.style.setProperty("--ps", ps.toFixed(3)); phone.style.setProperty("--py", py.toFixed(2) + "%");
+      // tela acesa (curada) e feixe de conserto
+      var lo = tc >= T.heal + 0.5 ? ease3(k01(tc, T.heal + 0.5, T.healEnd)) : 0;
+      phone.style.setProperty("--lo", lo.toFixed(3));
       var so = 0, sy = 0;
-      if (tc >= T.hold && tc < T.hold + 0.8) { v = k01(tc, T.hold, T.hold + 0.8); so = Math.sin(v * Math.PI); sy = v; }
+      if (tc >= T.heal && tc < T.heal + 0.8) { v = k01(tc, T.heal, T.heal + 0.75); so = Math.sin(Math.min(v, 1) * Math.PI); sy = v; }
       scan.style.setProperty("--so", so.toFixed(3)); scan.style.setProperty("--sy", (sy * (phone.offsetHeight || 1)).toFixed(1) + "px");
-      // faíscas no conserto
-      var sp = tc - (T.repEnd - 0.25);
+      // brilho suave no nascimento (sem clarão) e faíscas discretas
+      var kbl = k01(tc, T.birth, T.birthEnd + 0.4);
+      bloom.style.setProperty("--bo", (Math.sin(kbl * Math.PI) * 0.6).toFixed(3)); bloom.style.setProperty("--bs", (0.6 + 0.7 * kbl).toFixed(3));
+      var sp = tc - (T.birthEnd - 0.5);
       sparks.forEach(function (el, n) {
         if (sp < 0 || sp > 1.0) { if (el.style.opacity !== "0") el.style.opacity = 0; return; }
         var a = n * 2.399963 + 0.5, dist = 12 + (n % 4) * 9, kx = outCubic(clamp(sp / 0.9, 0, 1));
         el.style.opacity = (1 - clamp(sp / 1.0, 0, 1)).toFixed(3);
         el.style.transform = "translate(" + (Math.cos(a) * dist * kx * 4 * sk).toFixed(1) + "px," + (Math.sin(a) * dist * kx * 4 * sk).toFixed(1) + "px) scale(" + mix(1.3, 0.3, kx).toFixed(2) + ")";
       });
-      // legenda
-      if (tc >= 6.2 && tc < T.hold + 0.6) setStatus("Tela quebrada", true);
-      else if (tc >= T.repEnd - 0.1 && tc < 14.6) setStatus("Consertado ✓", false);
-      else setStatus("", false);
     }
 
     // ---------- laço de animação (automático) ----------
-    var t0 = performance.now(), raf = 0, running = false;
+    var t0 = performance.now() - (T.wind - OPEN_HOLD) * 1000, raf = 0, running = false;
     function frame(now) {
       var el = (now - t0) / 1000, n = Math.floor(el / CY);
       if (n !== cycleId) buildCycle(n);
-      render(el - n * CY);
+      render(el - n * CY, el);
       raf = requestAnimationFrame(frame);
     }
     function start() { if (running) return; running = true; raf = requestAnimationFrame(frame); }
     function stop() { running = false; cancelAnimationFrame(raf); }
     buildCycle(0);
-    window.__sabioSeek = function (tc, cyc) { stop(); buildCycle(cyc || 1); render(tc); };
+    window.__sabioSeek = function (tc, cyc) { stop(); buildCycle(cyc || 1); render(tc, tc); };
     // pausa fora da tela ou com a aba em segundo plano
     var visible = true;
     if (hasIO) {

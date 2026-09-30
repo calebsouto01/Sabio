@@ -261,14 +261,189 @@
     start();
   })();
 
-  // Hero: palco 3D da logo — inclina com o mouse, pausa fora da tela, sem movimento se o usuário preferir
+  // Hero: logo 3D — quebra como uma tela trincada, forma um celular e se conserta na logo
   (function () {
     var stage = document.getElementById("logoStage"), tilt = document.getElementById("tilt");
     if (!stage || !tilt) return;
-    if (reduce) {
+    var dataEl = document.getElementById("logoData");
+    if (reduce || !dataEl) {
       Array.prototype.slice.call(document.querySelectorAll("animateTransform")).forEach(function (a) { a.remove(); });
       return;
     }
+    var D = JSON.parse(dataEl.textContent);
+    var OX = D.ox, OY = D.oy, VS = D.vs, U = 100 / VS, P = D.pieces, N = P.length;
+    var els = Array.prototype.slice.call(stage.querySelectorAll(".pc"));
+    var $ = function (id) { return document.getElementById(id); };
+    var applePose = $("applePose"), phone = $("phone"), scan = $("scan"), shake = $("shake");
+    var flash = $("flash"), cracks = $("cracks"), status = $("stageStatus");
+    var sparks = Array.prototype.slice.call($("sparks").children);
+
+    // ---------- linha do tempo (segundos, ciclo de 15 s) ----------
+    var CY = 15;
+    var T = { tre: 5.05, imp: 5.4, frz: 5.52, bur: 6.5, dr: 7.7, asm: 9.4, hold: 10.9, rep: 11.15, repEnd: 12.45, res: 12.9 };
+
+    function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+    function mix(a, b, k) { return a + (b - a) * k; }
+    function k01(t, a, b) { return clamp((t - a) / (b - a), 0, 1); }
+    function ease3(k) { return k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2; }
+    function outCubic(k) { return 1 - Math.pow(1 - k, 3); }
+    function outBack(k) { var c1 = 1.25, c3 = c1 + 1; return 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2); }
+    function rng(seed) {
+      return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    }
+    function mixPose(a, b, k) {
+      return { x: mix(a.x, b.x, k), y: mix(a.y, b.y, k), z: mix(a.z, b.z, k), rx: mix(a.rx, b.rx, k), ry: mix(a.ry, b.ry, k), rz: mix(a.rz, b.rz, k), s: mix(a.s, b.s, k) };
+    }
+    var ID = { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, s: 1 };
+
+    // ---------- giro das trilhas (estado "logo") ----------
+    function ramp(dt) { var r = 1.2; return dt < r ? dt * dt / (2 * r) : dt - r / 2; }
+    function ringAngle(g, tc) {
+      var dt = tc >= T.res ? tc - T.res : tc + CY - T.res;
+      var a = ramp(dt);
+      return g === "long" ? a * 7.8 : -a * 12;
+    }
+    function ringPose(i, tc) {
+      var p = P[i], th = ringAngle(p.g, tc), r = th * Math.PI / 180, dx = p.cx - OX, dy = p.cy - OY;
+      return { x: dx * Math.cos(r) - dy * Math.sin(r) - dx, y: dx * Math.sin(r) + dy * Math.cos(r) - dy, z: 0, rx: 0, ry: 0, rz: th, s: 1 };
+    }
+
+    // ---------- estados por ciclo: dispersão e celular ----------
+    var SCR = { w: 124, h: 260 }, IMPACT = { x: OX + 14, y: OY + 40 };
+    var S = [], PH = [], cycleId = -1;
+    function buildCycle(n) {
+      cycleId = n;
+      var r = rng(n * 7919 + 13);
+      S = P.map(function (p) {
+        var a = r() * Math.PI * 2, rad = 62 + r() * 58;
+        return { x: Math.cos(a) * rad + (OX - p.cx), y: Math.sin(a) * rad + (OY - p.cy), z: -60 + r() * 150,
+                 rx: (r() - 0.5) * 150, ry: (r() - 0.5) * 150, rz: (r() - 0.5) * 360, s: 0.75 + r() * 0.45, ph: r() * 6.28, amp: 5 + r() * 8 };
+      });
+      // rachaduras a partir do ponto de impacto: peças mais longas pegam as direções mais longas
+      var dirs = [], k;
+      for (k = 0; k < N; k++) {
+        var a2 = ((k * 360 / N) + 12 + (r() - 0.5) * 16) * Math.PI / 180, ca = Math.cos(a2), sa = Math.sin(a2), t = 1e9;
+        if (ca > 0) t = Math.min(t, (OX + SCR.w / 2 - IMPACT.x) / ca); else if (ca < 0) t = Math.min(t, (OX - SCR.w / 2 - IMPACT.x) / ca);
+        if (sa > 0) t = Math.min(t, (OY + SCR.h / 2 - IMPACT.y) / sa); else if (sa < 0) t = Math.min(t, (OY - SCR.h / 2 - IMPACT.y) / sa);
+        dirs.push({ a: a2, t: t });
+      }
+      var byLen = P.map(function (p, i) { return i; }).sort(function (a, b) { return P[b].len - P[a].len; });
+      dirs.sort(function (a, b) { return b.t - a.t; });
+      PH = new Array(N);
+      byLen.forEach(function (i, rank) {
+        var p = P[i], d = dirs[rank], s = clamp(Math.min(d.t * 0.9, p.len) / p.len, 0.28, 1);
+        var gap = 5 + (rank % 3) * 5, half = s * p.len / 2;
+        var mx = IMPACT.x + Math.cos(d.a) * (gap + half), my = IMPACT.y + Math.sin(d.a) * (gap + half);
+        var rz = d.a * 180 / Math.PI - p.ang;
+        rz += 360 * Math.round((S[i].rz - rz) / 360);
+        PH[i] = { x: mx - p.cx, y: my - p.cy, z: 8, rx: 0, ry: 0, rz: rz, s: s };
+      });
+    }
+    function scatterAt(i, tc) {
+      var b = S[i];
+      return { x: b.x + Math.sin(tc * 1.3 + b.ph) * b.amp, y: b.y + Math.cos(tc * 1.1 + b.ph * 1.7) * b.amp, z: b.z + Math.sin(tc * 0.9 + b.ph) * 14,
+               rx: b.rx + Math.sin(tc * 0.7 + b.ph) * 16, ry: b.ry + Math.cos(tc * 0.6 + b.ph) * 16, rz: b.rz + Math.sin(tc * 0.5 + b.ph * 2) * 20, s: b.s };
+    }
+    function pieceAt(i, tc) {
+      var d = i * 0.03;
+      if (tc < T.tre) return ringPose(i, tc);
+      if (tc >= T.repEnd + 0.4) return tc < T.res ? ID : ringPose(i, tc);
+      if (tc < T.imp) {                       // anticipação: tremor crescente
+        var a = ((tc - T.tre) / (T.imp - T.tre)) * 1.8, q = ringPose(i, tc);
+        q.x += Math.sin(tc * 97 + i * 7) * a; q.y += Math.cos(tc * 83 + i * 5) * a; return q;
+      }
+      if (tc < T.frz) {                       // pausa do impacto
+        var f = ringPose(i, T.imp);
+        f.x += Math.sin(tc * 140 + i) * 1.2; f.y += Math.cos(tc * 120 + i) * 1.2; return f;
+      }
+      if (tc < T.dr - 1.2) {                  // estilhaça
+        return mixPose(ringPose(i, T.imp), scatterAt(i, tc), outCubic(k01(tc, T.frz + d * 0.6, T.bur)));
+      }
+      if (tc < T.dr) return scatterAt(i, tc);
+      if (tc < T.asm + 0.05) {                // reúne no formato de celular
+        return mixPose(scatterAt(i, tc), PH[i], ease3(k01(tc, T.dr + d, T.asm)));
+      }
+      if (tc < T.hold) {                      // celular trincado
+        var h = PH[i], br = Math.sin(tc * 3 + i) * 0.5; return { x: h.x, y: h.y, z: h.z + br, rx: 0, ry: 0, rz: h.rz, s: h.s };
+      }
+      var st = PH[i], start = { x: st.x, y: st.y, z: 40, rx: 0, ry: 0, rz: st.rz - 360 * Math.round(st.rz / 360), s: st.s };
+      if (tc < T.rep + 0.25 + d) {            // solta do vidro
+        var lift = ease3(k01(tc, T.hold, T.rep + 0.25));
+        return { x: st.x, y: st.y, z: mix(st.z, 40, lift), rx: 0, ry: 0, rz: start.rz, s: st.s };
+      }
+      return mixPose(start, ID, outBack(k01(tc, T.rep + 0.25 + d, T.repEnd)));   // encaixa de volta na logo
+    }
+
+    // ---------- estados dos demais elementos ----------
+    var lastStatus = "";
+    function setStatus(txt, bad) {
+      var key = txt + (bad ? "!" : "");
+      if (key === lastStatus) return; lastStatus = key;
+      status.textContent = txt; status.classList.toggle("on", !!txt); status.classList.toggle("bad", !!bad);
+    }
+    function render(tc) {
+      var i, tt, v;
+      for (i = 0; i < N; i++) {
+        var p = pieceAt(i, tc);
+        els[i].style.transform = "translate3d(" + (p.x * U).toFixed(3) + "%," + (p.y * U).toFixed(3) + "%," + p.z.toFixed(2) + "px) rotateX(" + p.rx.toFixed(2) + "deg) rotateY(" + p.ry.toFixed(2) + "deg) rotateZ(" + p.rz.toFixed(2) + "deg) scale(" + p.s.toFixed(3) + ")";
+      }
+      // maçã: núcleo que vira "fantasma" atrás do vidro e acende no conserto
+      var ao = 1, as = 1, jx = 0, jy = 0;
+      if (tc >= T.tre && tc < T.frz) { var am = tc < T.imp ? 1.2 : 3; jx = Math.sin(tc * 110) * am; jy = Math.cos(tc * 95) * am; }
+      if (tc >= T.frz && tc < T.rep) { var kk = ease3(k01(tc, T.frz + 0.1, 6.6)); ao = mix(1, 0.4, kk); as = mix(1, 0.9, kk); if (tc > T.asm) ao += Math.sin(tc * 4) * 0.1; }
+      if (tc >= T.rep && tc < T.repEnd + 0.3) { var kr = k01(tc, T.rep, T.repEnd + 0.1); ao = mix(0.4, 1, ease3(kr)); as = mix(0.9, 1, outBack(kr)); }
+      applePose.style.transform = "translate(" + jx.toFixed(2) + "px," + jy.toFixed(2) + "px) scale(" + as.toFixed(3) + ")";
+      applePose.style.opacity = ao.toFixed(3);
+      // celular
+      var po = 0, ps = 0.86;
+      if (tc >= 7.35 && tc < T.rep) { v = ease3(k01(tc, 7.35, 8.7)); po = v; ps = mix(0.86, 1, v); }
+      if (tc >= T.rep && tc < T.repEnd + 0.3) { v = ease3(k01(tc, T.rep + 0.05, T.repEnd)); po = 1 - v; ps = mix(1, 0.55, v); }
+      phone.style.setProperty("--po", po.toFixed(3)); phone.style.setProperty("--ps", ps.toFixed(3));
+      // feixe de conserto
+      var so = 0, sy = 0;
+      if (tc >= T.hold && tc < T.hold + 0.7) { v = k01(tc, T.hold, T.hold + 0.7); so = Math.sin(v * Math.PI); sy = v * 100; }
+      scan.style.setProperty("--so", so.toFixed(3)); scan.style.setProperty("--sy", (sy * (phone.offsetHeight || 1) / 100).toFixed(1) + "px");
+      // impacto: flash, rachaduras e tremor
+      tt = tc - T.imp; var fo = 0, co = 0, cd = 1, sx = 0, sh = 0;
+      if (tt >= 0 && tt < 0.6) { fo = tt < 0.06 ? tt / 0.06 : Math.exp(-(tt - 0.06) * 9); }
+      if (tt >= 0 && tt < 1.05) { cd = 1 - clamp(tt / 0.2, 0, 1); co = tt < 0.5 ? 1 : 1 - (tt - 0.5) / 0.55; }
+      if (tt >= 0 && tt < 0.5) { var am2 = 9 * (1 - tt / 0.5); sx = Math.sin(tt * 130) * am2; sh = Math.cos(tt * 110) * am2; }
+      var t2 = tc - (T.repEnd - 0.2);
+      if (t2 >= 0 && t2 < 0.5) fo = Math.max(fo, 0.45 * Math.exp(-t2 * 7));
+      flash.style.setProperty("--fo", fo.toFixed(3)); cracks.style.setProperty("--co", co.toFixed(3)); cracks.style.setProperty("--cd", cd.toFixed(3));
+      shake.style.transform = "translate3d(" + sx.toFixed(2) + "px," + sh.toFixed(2) + "px,0)";
+      // faíscas no conserto
+      var sp = tc - (T.repEnd - 0.25);
+      sparks.forEach(function (el, n) {
+        if (sp < 0 || sp > 1.0) { if (el.style.opacity !== "0") el.style.opacity = 0; return; }
+        var a = n * 2.399963 + 0.5, dist = 12 + (n % 4) * 9, kx = outCubic(clamp(sp / 0.9, 0, 1));
+        el.style.opacity = (1 - clamp(sp / 1.0, 0, 1)).toFixed(3);
+        el.style.transform = "translate(" + (Math.cos(a) * dist * kx * 4).toFixed(1) + "px," + (Math.sin(a) * dist * kx * 4).toFixed(1) + "px) scale(" + mix(1.3, 0.3, kx).toFixed(2) + ")";
+      });
+      // legenda
+      if (tc >= 6.2 && tc < T.hold + 0.6) setStatus("Tela quebrada", true);
+      else if (tc >= T.repEnd - 0.1 && tc < 14.6) setStatus("Consertado ✓", false);
+      else setStatus("", false);
+    }
+
+    // ---------- laço de animação ----------
+    var t0 = performance.now(), off = 0, raf = 0, running = false;
+    function frame(now) {
+      var el = (now - t0) / 1000 + off, n = Math.floor(el / CY);
+      if (n !== cycleId) buildCycle(n);
+      render(el - n * CY);
+      raf = requestAnimationFrame(frame);
+    }
+    function start() { if (running) return; running = true; raf = requestAnimationFrame(frame); }
+    function stop() { running = false; cancelAnimationFrame(raf); }
+    buildCycle(0);
+    // toque/clique: dispara a quebra
+    stage.addEventListener("click", function () {
+      var now = performance.now(), el = (now - t0) / 1000 + off, tc = el - Math.floor(el / CY) * CY;
+      if (tc < T.tre - 0.5 || tc >= T.res) off += (T.tre - 0.35) - tc + (tc >= T.res ? CY : 0);
+    });
+    window.__sabioSeek = function (tc) { stop(); buildCycle(1); render(tc); };
+    // inclina com o mouse; pausa fora da tela
     var hero = stage.closest(".hero") || stage;
     if (window.matchMedia && window.matchMedia("(hover: hover)").matches) {
       hero.addEventListener("pointermove", function (e) {
@@ -278,14 +453,16 @@
         tilt.style.setProperty("--rx", (-y * 24).toFixed(1) + "deg");
       });
       hero.addEventListener("pointerleave", function () {
-        tilt.style.setProperty("--ry", "0deg");
-        tilt.style.setProperty("--rx", "0deg");
+        tilt.style.setProperty("--ry", "0deg"); tilt.style.setProperty("--rx", "0deg");
       });
     }
+    var visible = true;
     if (hasIO) {
       new IntersectionObserver(function (entries) {
-        stage.classList.toggle("is-off", !entries[0].isIntersecting);
+        visible = entries[0].isIntersecting; stage.classList.toggle("is-off", !visible);
+        if (visible && !document.hidden) start(); else stop();
       }, { threshold: 0.05 }).observe(stage);
-    }
+    } else start();
+    document.addEventListener("visibilitychange", function () { if (document.hidden) stop(); else if (visible) start(); });
   })();
 })();

@@ -1,0 +1,16 @@
+Fotos da seção "Acessórios" (uma para cada categoria).
+
+Coloque aqui, com EXATAMENTE estes nomes (.jpg):
+
+  audio.jpg     -> Áudio: fones, headphones, caixas de som
+                   (buscar: "JBL headphone", "caixa de som bluetooth", "fone de ouvido")
+  capas.jpg     -> Capas e proteção: capinhas e películas de celular
+  energia.jpg   -> Energia: carregadores, cabos, fontes
+  games.jpg     -> Games e mais: controle de videogame, teclado, garrafa térmica
+
+Dicas:
+- Imagem HORIZONTAL, proporção 2:1 (ex.: 1200x600 px), até ~300 KB.
+- O assunto principal deve ficar no CENTRO da foto (as bordas são cortadas).
+- A foto aparece escurecida por trás do texto, então prefira imagens nítidas.
+- Se uma foto faltar, a categoria aparece sem imagem, sem erro.
+- Guarde o crédito/licença se o banco de imagens exigir.

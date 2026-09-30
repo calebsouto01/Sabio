@@ -1,0 +1,15 @@
+Fotos dos serviços de assistência técnica.
+
+Coloque aqui as imagens com EXATAMENTE estes nomes (formato .jpg):
+
+  tela.jpg       -> Troca de tela
+  bateria.jpg    -> Troca de bateria
+  conector.jpg   -> Conector de carga
+  outros.jpg     -> Outros reparos
+
+Opcional (ainda não usada no site):
+  protecao.jpg   -> Película / proteção
+
+Dicas: use imagens com proporção horizontal (4:3), largura entre 800 e 1200 px
+e até ~300 KB cada. Se a foto não existir, o cartão aparece sem imagem.
+Guarde o crédito/licença de cada imagem se o banco de imagens exigir.
